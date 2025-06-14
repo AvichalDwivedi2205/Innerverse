@@ -1,0 +1,20 @@
+# Google ADK and Gemini API Keys
+GOOGLE_ADK_API_KEY=your_google_adk_api_key_here
+GEMINI_2_5_PRO_API_KEY=your_gemini_2_5_pro_api_key_here
+GEMINI_EMBEDDING_API_KEY=your_gemini_embedding_api_key_here
+
+# Voice and Video APIs
+ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+TAVUS_API_KEY=your_tavus_api_key_here
+
+# Google Services
+GOOGLE_SPEECH_API_KEY=your_google_speech_api_key_here
+GOOGLE_CALENDAR_API_KEY=your_google_calendar_api_key_here
+GMAIL_API_KEY=your_gmail_api_key_here
+
+# Vector Database
+PINECONE_API_KEY=your_pinecone_api_key_here
+PINECONE_ENVIRONMENT=us-east1-gcp
+
+# Firebase Configuration
+FIREBASE_SERVICE_ACCOUNT_PATH=path/to/your/serviceAccountKey.json
