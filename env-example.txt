@@ -1,0 +1,94 @@
+# Environment Variables for Innerverse Agent System
+# Copy this file to .env and fill in your actual values
+
+# ===== Google Cloud Configuration =====
+# Google Cloud Project ID
+GOOGLE_CLOUD_PROJECT=your-project-id
+
+# Path to your Google Cloud service account key file
+GOOGLE_APPLICATION_CREDENTIALS=path/to/your/service-account-key.json
+
+# Google Cloud region for Vertex AI
+GOOGLE_CLOUD_REGION=us-central1
+
+# ===== Agent Model Configuration =====
+# Model names for each agent (defaults to gemini-2.5-pro if not set)
+JOURNALING_AGENT_MODEL=gemini-2.5-pro
+THERAPY_AGENT_MODEL=gemini-2.5-pro
+ORCHESTRATOR_AGENT_MODEL=gemini-2.5-pro
+
+# ===== Vertex AI Configuration =====
+# Vertex AI project and location
+VERTEX_AI_PROJECT=your-project-id
+VERTEX_AI_LOCATION=us-central1
+
+# ===== Pinecone Configuration =====
+# Pinecone API key for vector embeddings
+PINECONE_API_KEY=your-pinecone-api-key
+
+# Pinecone environment
+PINECONE_ENVIRONMENT=your-pinecone-environment
+
+# Pinecone index name for storing embeddings
+PINECONE_INDEX_NAME=innerverse-embeddings
+
+# ===== Firebase/Firestore Configuration =====
+# Firebase project ID (usually same as Google Cloud project)
+FIREBASE_PROJECT_ID=your-project-id
+
+# ===== Development Configuration =====
+# Environment (development, staging, production)
+ENVIRONMENT=development
+
+# Debug mode (true/false)
+DEBUG=true
+
+# Logging level (DEBUG, INFO, WARNING, ERROR)
+LOG_LEVEL=INFO
+
+# ===== Optional API Configuration =====
+# If you're running the agents as a web service
+PORT=8000
+HOST=0.0.0.0
+
+# ===== Security Configuration =====
+# JWT secret key for authentication (if implementing user auth)
+JWT_SECRET_KEY=your-jwt-secret-key
+
+# Session secret for web sessions
+SESSION_SECRET=your-session-secret
+
+# ===== Database Configuration =====
+# Additional database URLs if using other databases besides Firestore
+# DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+# ===== Monitoring & Analytics =====
+# Application Insights or other monitoring service keys
+# APPINSIGHTS_INSTRUMENTATIONKEY=your-instrumentation-key
+
+# ===== Rate Limiting =====
+# Rate limiting configuration for API calls
+MAX_REQUESTS_PER_MINUTE=60
+MAX_REQUESTS_PER_HOUR=1000
+
+# ===== Agent Behavior Configuration =====
+# Temperature settings for AI model responses (0.0 to 1.0)
+MODEL_TEMPERATURE=0.3
+
+# Maximum tokens for model responses
+MAX_TOKENS=2048
+
+# ===== Data Processing Configuration =====
+# Embedding dimension for vector storage
+EMBEDDING_DIMENSION=768
+
+# DBSCAN clustering parameters
+DBSCAN_EPS=0.5
+DBSCAN_MIN_SAMPLES=2
+
+# ===== Backup & Data Retention =====
+# Data retention period in days
+DATA_RETENTION_DAYS=365
+
+# Backup frequency (daily, weekly, monthly)
+BACKUP_FREQUENCY=daily 

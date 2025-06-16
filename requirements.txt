@@ -1,0 +1,17 @@
+google-cloud-firestore
+google-cloud-aiplatform
+google-genai
+google-adk
+vertexai
+numpy
+scikit-learn
+pinecone-client
+fastapi
+uvicorn
+python-dotenv
+pytest
+pytest-asyncio
+black
+flake8
+mypy
+aiohttp
