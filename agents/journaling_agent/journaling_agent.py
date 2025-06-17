@@ -75,8 +75,34 @@ def setup_before_agent_call(callback_context: CallbackContext):
     )
 
 
+# Configure model with proper API settings
+def get_model_config():
+    """Get the proper model configuration based on available credentials."""
+    google_api_key = os.getenv('GOOGLE_API_KEY')
+    vertex_project = os.getenv('GOOGLE_CLOUD_PROJECT') or os.getenv('VERTEX_AI_PROJECT')
+    vertex_location = os.getenv('GOOGLE_CLOUD_REGION') or os.getenv('VERTEX_AI_LOCATION', 'us-central1')
+    
+    if google_api_key:
+        # Use Google AI API with latest Gemini 2.5 Pro
+        return {
+            "model": os.getenv("JOURNALING_AGENT_MODEL", "gemini-2.5-pro"),
+            "api_key": google_api_key
+        }
+    elif vertex_project:
+        # Use Vertex AI with latest Gemini 2.5 Pro (now available!)
+        model_name = os.getenv("JOURNALING_AGENT_MODEL", "gemini-2.5-pro")
+        return {
+            "model": f"vertexai/{vertex_project}/{vertex_location}/{model_name}"
+        }
+    else:
+        # Fallback - use latest Gemini model
+        return {
+            "model": os.getenv("JOURNALING_AGENT_MODEL", "gemini-2.5-pro")
+        }
+
+model_config = get_model_config()
+
 journaling_agent = Agent(
-    model=os.getenv("JOURNALING_AGENT_MODEL", "gemini-2.5-pro"),
     name="journaling_agent",
     instruction=return_instructions_journaling(),
     global_instruction=(
@@ -99,4 +125,5 @@ journaling_agent = Agent(
     ],
     before_agent_callback=setup_before_agent_call,
     generate_content_config=types.GenerateContentConfig(temperature=0.3),
+    **model_config
 )

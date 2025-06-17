@@ -70,8 +70,32 @@ def setup_before_agent_call(callback_context: CallbackContext):
     )
 
 
+# Configure model with proper API settings
+def get_orchestrator_model_config():
+    """Get the proper model configuration based on available credentials."""
+    google_api_key = os.getenv('GOOGLE_API_KEY')
+    vertex_project = os.getenv('GOOGLE_CLOUD_PROJECT') or os.getenv('VERTEX_AI_PROJECT')
+    vertex_location = os.getenv('GOOGLE_CLOUD_REGION') or os.getenv('VERTEX_AI_LOCATION', 'us-central1')
+    
+    if google_api_key:
+        return {
+            "model": os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-2.5-pro"),
+            "api_key": google_api_key
+        }
+    elif vertex_project:
+        # Use latest Vertex AI Gemini 2.5 Pro model
+        model_name = os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-2.5-pro")
+        return {
+            "model": f"vertexai/{vertex_project}/{vertex_location}/{model_name}"
+        }
+    else:
+        return {
+            "model": os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-2.5-pro")
+        }
+
+orchestrator_model_config = get_orchestrator_model_config()
+
 mental_orchestrator_agent = Agent(
-    model=os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-2.5-pro"),
     name="mental_orchestrator_agent",
     instruction=return_instructions_orchestrator(),
     global_instruction=(
@@ -97,4 +121,5 @@ mental_orchestrator_agent = Agent(
     ],
     before_agent_callback=setup_before_agent_call,
     generate_content_config=types.GenerateContentConfig(temperature=0.2),
+    **orchestrator_model_config
 )
