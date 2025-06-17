@@ -8,6 +8,7 @@ from .tool_results import (
     CoordinationResult
 )
 from .agent_coordinator import AgentCoordinator, coordinator
+from .pinecone_service import PineconeService, pinecone_service
 
 __all__ = [
     "ToolResult",
@@ -16,5 +17,7 @@ __all__ = [
     "OrchestratorToolResult",
     "CoordinationResult",
     "AgentCoordinator",
-    "coordinator"
+    "coordinator",
+    "PineconeService",
+    "pinecone_service"
 ] 

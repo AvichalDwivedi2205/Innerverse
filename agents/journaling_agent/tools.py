@@ -14,7 +14,7 @@ from google.cloud import firestore
 from google.cloud import aiplatform
 import vertexai
 from vertexai.generative_models import GenerativeModel
-import pinecone
+# Pinecone functionality is now handled by the pinecone_service
 
 from .prompts import (
     get_standardization_prompt,
@@ -22,11 +22,26 @@ from .prompts import (
     get_reflection_question_prompt
 )
 from ..common import JournalingToolResult, coordinator
+from ..common.pinecone_service import pinecone_service
 
-# Initialize clients
-db = firestore.Client()
-vertexai.init()
-model = GenerativeModel("gemini-2.5-pro")
+# Initialize clients lazily to avoid import-time errors
+_db = None
+_model = None
+
+def get_firestore_client():
+    """Get Firestore client with lazy initialization."""
+    global _db
+    if _db is None:
+        _db = firestore.Client()
+    return _db
+
+def get_gemini_model():
+    """Get Gemini model with lazy initialization."""
+    global _model
+    if _model is None:
+        vertexai.init()
+        _model = GenerativeModel("gemini-2.5-pro")
+    return _model
 
 
 async def standardize_journal_text(
@@ -39,7 +54,7 @@ async def standardize_journal_text(
         prompt = get_standardization_prompt()
         full_prompt = f"{prompt}\n\nRaw Journal Text: {raw_text}"
         
-        response = model.generate_content(full_prompt)
+        response = get_gemini_model().generate_content(full_prompt)
         standardized_text = response.text
         
         # Parse JSON response
@@ -81,7 +96,7 @@ async def generate_journal_insights(
         prompt = get_insights_prompt()
         full_prompt = prompt.format(entry=json.dumps(standardized_entry))
         
-        response = model.generate_content(full_prompt)
+        response = get_gemini_model().generate_content(full_prompt)
         insights_text = response.text
         
         # Parse JSON response
@@ -121,7 +136,7 @@ async def generate_reflection_question(
         prompt = get_reflection_question_prompt()
         full_prompt = prompt.format(entry_with_insights=json.dumps(entry_with_insights))
         
-        response = model.generate_content(full_prompt)
+        response = get_gemini_model().generate_content(full_prompt)
         reflection_question = response.text.strip()
         
         # Store in context
@@ -158,7 +173,7 @@ async def store_journal_entry(
         }
         
         # Store in Firestore
-        db.collection("users").document(user_id).collection("journals").document(journal_id).set(journal_doc)
+        get_firestore_client().collection("users").document(user_id).collection("journals").document(journal_id).set(journal_doc)
         
         # Generate and store embedding
         reflection_text = journal_session["standardized_entry"].get("reflection", "")
@@ -170,7 +185,7 @@ async def store_journal_entry(
         )
         
         # Update journal with embedding ID
-        db.collection("users").document(user_id).collection("journals").document(journal_id).update({
+        get_firestore_client().collection("users").document(user_id).collection("journals").document(journal_id).update({
             "embeddingId": embedding_id
         })
         
@@ -186,7 +201,7 @@ async def store_journal_entry(
             "expiresAt": datetime.now().replace(hour=23, minute=59, second=59)
         }
         
-        db.collection("users").document(user_id).collection("recommendations").add(recommendation_doc)
+        get_firestore_client().collection("users").document(user_id).collection("recommendations").add(recommendation_doc)
         
         tool_context.state["journal_id"] = journal_id
         
@@ -207,7 +222,7 @@ async def update_consistency_tracking(
             return "Error: User ID not found in context"
         
         # Get current metrics
-        metrics_ref = db.collection("users").document(user_id).collection("dashboard").document("metrics")
+        metrics_ref = get_firestore_client().collection("users").document(user_id).collection("dashboard").document("metrics")
         metrics_doc = metrics_ref.get()
         
         if metrics_doc.exists:
@@ -293,25 +308,27 @@ async def _generate_and_store_embedding(
     """Helper function to generate and store embeddings in Pinecone."""
     
     try:
-        # Generate embedding using Vertex AI
-        embedding_model = aiplatform.TextEmbeddingModel.from_pretrained("text-embedding-004")
-        embeddings = embedding_model.get_embeddings([text])
-        embedding_vector = embeddings[0].values
-        
         # Generate unique embedding ID
         embedding_id = f"{user_id}_{context}_{source_id}"
         
-        # Store in Pinecone (assuming Pinecone is configured)
-        # pinecone.upsert(
-        #     vectors=[(embedding_id, embedding_vector, {
-        #         "userId": user_id,
-        #         "context": context,
-        #         "sourceId": source_id,
-        #         "timestamp": datetime.now().isoformat()
-        #     })]
-        # )
+        # Store in Pinecone using the service
+        success = await pinecone_service.store_embedding(
+            embedding_id=embedding_id,
+            text=text,
+            user_id=user_id,
+            context=context,
+            source_id=source_id,
+            additional_metadata={
+                "agent": "journaling_agent",
+                "version": "1.0"
+            }
+        )
         
-        return embedding_id
+        if success:
+            return embedding_id
+        else:
+            print(f"Failed to store embedding: {embedding_id}")
+            return ""
         
     except Exception as e:
         print(f"Error generating embedding: {str(e)}")

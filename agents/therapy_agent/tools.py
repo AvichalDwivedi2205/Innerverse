@@ -15,7 +15,7 @@ from google.cloud import firestore
 from google.cloud import aiplatform
 import vertexai
 from vertexai.generative_models import GenerativeModel
-import pinecone
+# Pinecone functionality is now handled by the pinecone_service
 
 from .prompts import (
     get_transcript_processing_prompt,
@@ -24,10 +24,24 @@ from .prompts import (
     get_therapy_reflection_question_prompt
 )
 
-# Initialize clients
-db = firestore.Client()
-vertexai.init()
-model = GenerativeModel("gemini-2.5-pro")
+# Initialize clients lazily to avoid import-time errors
+_db = None
+_model = None
+
+def get_firestore_client():
+    """Get Firestore client with lazy initialization."""
+    global _db
+    if _db is None:
+        _db = firestore.Client()
+    return _db
+
+def get_gemini_model():
+    """Get Gemini model with lazy initialization."""
+    global _model
+    if _model is None:
+        vertexai.init()
+        _model = GenerativeModel("gemini-2.5-pro")
+    return _model
 
 
 async def process_therapy_transcript(

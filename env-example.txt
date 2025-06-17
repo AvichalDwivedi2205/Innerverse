@@ -23,11 +23,11 @@ VERTEX_AI_PROJECT=your-project-id
 VERTEX_AI_LOCATION=us-central1
 
 # ===== Pinecone Configuration =====
-# Pinecone API key for vector embeddings
+# Pinecone API key for vector embeddings (crucial for web app trend analysis)
 PINECONE_API_KEY=your-pinecone-api-key
 
-# Pinecone environment
-PINECONE_ENVIRONMENT=your-pinecone-environment
+# Pinecone environment (e.g., us-east1-gcp, us-west1-gcp)
+PINECONE_ENVIRONMENT=us-east1-gcp
 
 # Pinecone index name for storing embeddings
 PINECONE_INDEX_NAME=innerverse-embeddings

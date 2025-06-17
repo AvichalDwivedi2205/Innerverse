@@ -17,7 +17,7 @@ from google.adk.tools import ToolContext
 from google.cloud import firestore
 import vertexai
 from vertexai.generative_models import GenerativeModel
-import pinecone
+# Pinecone functionality is now handled by the pinecone_service
 
 from .prompts import (
     get_clustering_prompt,
@@ -25,67 +25,67 @@ from .prompts import (
     get_exercise_recommendation_prompt,
     get_crisis_detection_prompt
 )
+from ..common import OrchestratorToolResult
+from ..common.pinecone_service import pinecone_service
 
-# Initialize clients
-db = firestore.Client()
-vertexai.init()
-model = GenerativeModel("gemini-2.5-pro")
+# Initialize clients lazily to avoid import-time errors
+_db = None
+_model = None
+
+def get_firestore_client():
+    """Get Firestore client with lazy initialization."""
+    global _db
+    if _db is None:
+        _db = firestore.Client()
+    return _db
+
+def get_gemini_model():
+    """Get Gemini model with lazy initialization."""
+    global _model
+    if _model is None:
+        vertexai.init()
+        _model = GenerativeModel("gemini-2.5-pro")
+    return _model
 
 
 async def retrieve_user_embeddings(
     tool_context: ToolContext,
-) -> str:
+) -> OrchestratorToolResult:
     """Tool to retrieve all user embeddings from Pinecone for analysis."""
     
     try:
         user_id = tool_context.state.get("user_id")
         if not user_id:
-            return "Error: User ID not found in context"
+            return OrchestratorToolResult.error_result(
+                message="User ID not found in context",
+                error_details="user_id is required for embedding retrieval",
+                next_actions=["verify_user_context"]
+            )
         
-        # Retrieve embeddings from Pinecone (simulated)
-        # In real implementation, this would query Pinecone
-        embeddings_data = []
-        
-        # Simulate retrieving embeddings with metadata
-        # pinecone_results = pinecone.query(
-        #     filter={"userId": user_id},
-        #     top_k=1000,
-        #     include_metadata=True
-        # )
-        
-        # For simulation, create sample data structure
-        sample_embeddings = [
-            {
-                "id": f"{user_id}_journal_001",
-                "vector": np.random.rand(768).tolist(),
-                "metadata": {
-                    "userId": user_id,
-                    "context": "journal",
-                    "sourceId": "journal_001",
-                    "timestamp": "2025-06-15T10:00:00Z"
-                }
-            },
-            {
-                "id": f"{user_id}_therapy_001",
-                "vector": np.random.rand(768).tolist(),
-                "metadata": {
-                    "userId": user_id,
-                    "context": "therapy",
-                    "sourceId": "therapy_001",
-                    "timestamp": "2025-06-15T14:00:00Z"
-                }
-            }
-        ]
-        
-        embeddings_data = sample_embeddings
+        # Retrieve embeddings from Pinecone using the service
+        embeddings_data = await pinecone_service.retrieve_user_embeddings(
+            user_id=user_id,
+            limit=1000
+        )
         
         # Store in context
         tool_context.state["orchestrator_state"]["embeddings_data"] = embeddings_data
         
-        return f"Retrieved {len(embeddings_data)} embeddings for analysis"
+        return OrchestratorToolResult.success_result(
+            data={
+                "embeddings_data": embeddings_data,
+                "embeddings_count": len(embeddings_data)
+            },
+            message=f"Retrieved {len(embeddings_data)} embeddings for analysis",
+            next_actions=["cluster_internal_patterns"]
+        )
         
     except Exception as e:
-        return f"Error retrieving user embeddings: {str(e)}"
+        return OrchestratorToolResult.error_result(
+            message="Error retrieving user embeddings",
+            error_details=str(e),
+            next_actions=["retry_embedding_retrieval", "check_pinecone_connection"]
+        )
 
 
 async def cluster_internal_patterns(

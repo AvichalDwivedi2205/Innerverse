@@ -16,7 +16,7 @@ def run_tests(test_type="all", coverage=True, verbose=True):
         verbose: Whether to run with verbose output
     """
     # Base pytest command
-    cmd = ["python", "-m", "pytest"]
+    cmd = ["python3", "-m", "pytest"]
     
     # Add test type filters
     if test_type == "unit":
@@ -85,7 +85,7 @@ def main():
     
     # If specific file requested, run it directly
     if args.file:
-        cmd = ["python", "-m", "pytest", args.file]
+        cmd = ["python3", "-m", "pytest", args.file]
         if not args.no_coverage:
             cmd.extend(["--cov=agents"])
         if not args.quiet:

@@ -5,14 +5,19 @@ import json
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from datetime import datetime
 
-from google.adk.tools import ToolContext
-from google.adk.agents.callback_context import CallbackContext
-from agents.journaling_agent.tools import (
-    standardize_journal_text,
-    generate_journal_insights,
-    trigger_mental_orchestrator
-)
-from agents.common.tool_results import JournalingToolResult
+# Mock Google Cloud services BEFORE importing agent tools
+with patch('google.cloud.firestore.Client'), \
+     patch('vertexai.init'), \
+     patch('vertexai.generative_models.GenerativeModel'):
+    
+    from google.adk.tools import ToolContext
+    from google.adk.agents.callback_context import CallbackContext
+    from agents.journaling_agent.tools import (
+        standardize_journal_text,
+        generate_journal_insights,
+        trigger_mental_orchestrator
+    )
+    from agents.common.tool_results import JournalingToolResult
 
 
 class TestJournalingAgentIntegration:
@@ -35,10 +40,11 @@ class TestJournalingAgentIntegration:
         }
     
     @pytest.mark.asyncio
-    @patch('agents.journaling_agent.tools.model')
-    async def test_standardize_journal_text_success(self, mock_model):
+    @patch('agents.journaling_agent.tools.get_gemini_model')
+    async def test_standardize_journal_text_success(self, mock_get_gemini_model):
         """Test successful journal text standardization."""
-        # Mock the Gemini response
+        # Mock the Gemini model and response
+        mock_model = Mock()
         mock_response = Mock()
         mock_response.text = json.dumps({
             "reflection": "Today I felt overwhelmed by work pressure, but I realize I created this stress through my thoughts.",
@@ -47,6 +53,7 @@ class TestJournalingAgentIntegration:
             "processed_at": datetime.now().isoformat()
         })
         mock_model.generate_content.return_value = mock_response
+        mock_get_gemini_model.return_value = mock_model
         
         # Test the function
         result = await standardize_journal_text(
