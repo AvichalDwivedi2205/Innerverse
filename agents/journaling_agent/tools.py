@@ -21,6 +21,7 @@ from .prompts import (
     get_insights_prompt,
     get_reflection_question_prompt
 )
+from ..common import JournalingToolResult, coordinator
 
 # Initialize clients
 db = firestore.Client()
@@ -31,7 +32,7 @@ model = GenerativeModel("gemini-2.5-pro")
 async def standardize_journal_text(
     raw_text: str,
     tool_context: ToolContext,
-) -> str:
+) -> JournalingToolResult:
     """Tool to standardize journal text using Gemini-2.5-Pro with empowerment focus."""
     
     try:
@@ -48,19 +49,34 @@ async def standardize_journal_text(
         tool_context.state["journal_session"]["raw_text"] = raw_text
         tool_context.state["journal_session"]["standardized_entry"] = standardized_entry
         
-        return f"Journal text standardized with empowerment focus: {standardized_entry}"
+        return JournalingToolResult.success_result(
+            data={"standardized_entry": standardized_entry},
+            message="Journal text standardized with empowerment focus",
+            next_actions=["generate_journal_insights"]
+        )
         
     except Exception as e:
-        return f"Error standardizing journal text: {str(e)}"
+        return JournalingToolResult.error_result(
+            message="Error standardizing journal text",
+            error_details=str(e),
+            next_actions=["retry_standardization", "check_input_format"]
+        )
 
 
 async def generate_journal_insights(
     tool_context: ToolContext,
-) -> str:
+) -> JournalingToolResult:
     """Tool to generate journal insights focusing on internal empowerment."""
     
     try:
         standardized_entry = tool_context.state["journal_session"]["standardized_entry"]
+        
+        if not standardized_entry:
+            return JournalingToolResult.error_result(
+                message="No standardized entry found",
+                error_details="standardize_journal_text must be called first",
+                next_actions=["standardize_journal_text"]
+            )
         
         prompt = get_insights_prompt()
         full_prompt = prompt.format(entry=json.dumps(standardized_entry))
@@ -74,10 +90,18 @@ async def generate_journal_insights(
         # Store in context
         tool_context.state["journal_session"]["insights"] = insights
         
-        return f"Journal insights generated with empowerment themes: {insights}"
+        return JournalingToolResult.success_result(
+            data={"insights": insights},
+            message="Journal insights generated with empowerment themes",
+            next_actions=["generate_reflection_question"]
+        )
         
     except Exception as e:
-        return f"Error generating journal insights: {str(e)}"
+        return JournalingToolResult.error_result(
+            message="Error generating journal insights",
+            error_details=str(e),
+            next_actions=["retry_insights_generation", "check_standardized_entry"]
+        )
 
 
 async def generate_reflection_question(
@@ -214,7 +238,7 @@ async def update_consistency_tracking(
 
 async def trigger_mental_orchestrator(
     tool_context: ToolContext,
-) -> str:
+) -> JournalingToolResult:
     """Tool to trigger Mental Orchestrator Agent for mind map updates."""
     
     try:
@@ -222,25 +246,42 @@ async def trigger_mental_orchestrator(
         journal_id = tool_context.state.get("journal_id")
         
         if not user_id or not journal_id:
-            return "Error: User ID or Journal ID not found in context"
+            return JournalingToolResult.error_result(
+                message="Missing required context data",
+                error_details="User ID or Journal ID not found in context",
+                next_actions=["ensure_journal_stored", "verify_user_context"]
+            )
         
-        # Create trigger document for Mental Orchestrator
-        trigger_doc = {
-            "userId": user_id,
-            "sourceType": "journal",
-            "sourceId": journal_id,
-            "action": "update_mind_map",
-            "status": "pending",
-            "createdAt": datetime.now()
-        }
+        # Use coordinator for direct agent communication instead of Firebase triggers
+        coordination_result = await coordinator.trigger_mindmap_update(
+            user_id=user_id,
+            source_type="journal",
+            source_id=journal_id,
+            callback_context=tool_context
+        )
         
-        # Store trigger (this would be picked up by Firebase Functions)
-        db.collection("orchestrator_triggers").add(trigger_doc)
-        
-        return "Mental Orchestrator Agent triggered for mind map update"
+        if coordination_result.success:
+            return JournalingToolResult.success_result(
+                data={
+                    "coordination_result": coordination_result.dict(),
+                    "coordinated_agents": coordination_result.coordinated_agents
+                },
+                message="Mental Orchestrator Agent coordination completed successfully",
+                next_actions=[]
+            )
+        else:
+            return JournalingToolResult.error_result(
+                message="Failed to coordinate with Mental Orchestrator",
+                error_details="; ".join(coordination_result.errors),
+                next_actions=["retry_coordination", "check_agent_registry"]
+            )
         
     except Exception as e:
-        return f"Error triggering Mental Orchestrator: {str(e)}"
+        return JournalingToolResult.error_result(
+            message="Error triggering Mental Orchestrator",
+            error_details=str(e),
+            next_actions=["retry_coordination", "check_coordinator_setup"]
+        )
 
 
 async def _generate_and_store_embedding(

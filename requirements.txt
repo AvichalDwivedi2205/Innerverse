@@ -6,11 +6,14 @@ vertexai
 numpy
 scikit-learn
 pinecone-client
+pydantic
 fastapi
 uvicorn
 python-dotenv
 pytest
 pytest-asyncio
+pytest-mock
+pytest-cov
 black
 flake8
 mypy

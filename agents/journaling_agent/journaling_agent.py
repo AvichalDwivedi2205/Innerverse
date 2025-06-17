@@ -27,21 +27,39 @@ date_today = date.today()
 
 
 def setup_before_agent_call(callback_context: CallbackContext):
-    """Setup the journaling agent."""
+    """Setup the journaling agent with improved state management."""
     
     # Initialize user context if not exists
     if "user_id" not in callback_context.state:
         callback_context.state["user_id"] = None
     
-    # Initialize journaling session state
+    # Initialize journaling session state with preservation of existing data
     if "journal_session" not in callback_context.state:
         callback_context.state["journal_session"] = {
             "raw_text": "",
             "standardized_entry": {},
             "insights": {},
             "reflection_question": "",
-            "embedding_id": ""
+            "embedding_id": "",
+            "created_at": date_today.isoformat(),
+            "status": "active"
         }
+    else:
+        # Preserve existing session data while ensuring structure exists
+        session = callback_context.state["journal_session"]
+        required_keys = {
+            "raw_text": "",
+            "standardized_entry": {},
+            "insights": {},
+            "reflection_question": "",
+            "embedding_id": "",
+            "created_at": session.get("created_at", date_today.isoformat()),
+            "status": session.get("status", "active")
+        }
+        
+        for key, default_value in required_keys.items():
+            if key not in session:
+                session[key] = default_value
     
     # Set empowerment-focused instruction context
     callback_context._invocation_context.agent.instruction = (
