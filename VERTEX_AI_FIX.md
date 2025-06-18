@@ -1,14 +1,14 @@
 # 🎉 VERTEX AI MODEL ISSUE FIXED!
 
-## ✅ **Problem Solved: "Model vertexai/...gemini-2.5-pro not found"**
+## ✅ **Problem Solved: "Model vertexai/...gemini-2.5-pro-preview-05-06 not found"**
 
-The issue was that **`gemini-2.5-pro` doesn't exist in Vertex AI**. I've updated all your agents to use the correct model names.
+The issue was that **`gemini-2.5-pro-preview-05-06` doesn't exist in Vertex AI**. I've updated all your agents to use the correct model names.
 
 ## 🔧 **What Was Fixed:**
 
 ### **Before (Broken):**
 ```
-vertexai/gen-lang-client-0307630688/us-central1/gemini-2.5-pro  ❌ NOT FOUND
+vertexai/gen-lang-client-0307630688/us-central1/gemini-2.5-pro-preview-05-06  ❌ NOT FOUND
 ```
 
 ### **After (Fixed):**
@@ -25,7 +25,7 @@ vertexai/gen-lang-client-0307630688/us-central1/gemini-1.5-pro-001  ✅ EXISTS
 - `gemini-1.5-flash-002`
 
 ❌ **Non-existent Models:**
-- `gemini-2.5-pro` (Doesn't exist in Vertex AI)
+- `gemini-2.5-pro-preview-05-06` (Doesn't exist in Vertex AI)
 - `gemini-2.0-pro` (Doesn't exist in Vertex AI)
 
 ## 🚀 **Your ADK Web Interface Should Now Work!**

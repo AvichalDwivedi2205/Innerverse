@@ -7,6 +7,14 @@ import subprocess
 import argparse
 from pathlib import Path
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("⚠️  python-dotenv not installed, environment variables from .env file won't be loaded")
+    print("   Install with: pip install python-dotenv")
+
 
 def check_environment():
     """Check if environment is properly configured."""
@@ -16,10 +24,19 @@ def check_environment():
         print("Please copy env-example.txt to .env and fill in your values.")
         return False
     
-    # Check for required environment variables
+    # Check for Google AI API key first (prioritized)
+    google_api_key = os.getenv('GOOGLE_API_KEY')
+    if google_api_key:
+        print("✅ Google AI API configuration found!")
+        print(f"   Using Google AI API with key: {google_api_key[:10]}...{google_api_key[-4:]}")
+        # Set the environment variable to use Google AI
+        os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'FALSE'
+        return True
+    
+    # Fallback to Vertex AI configuration
     required_vars = [
         "GOOGLE_CLOUD_PROJECT",
-        "GOOGLE_APPLICATION_CREDENTIALS",
+        "GOOGLE_APPLICATION_CREDENTIALS", 
         "GOOGLE_CLOUD_REGION"
     ]
     
@@ -29,11 +46,15 @@ def check_environment():
             missing_vars.append(var)
     
     if missing_vars:
-        print(f"❌ Missing required environment variables: {', '.join(missing_vars)}")
-        print("Please check your .env file configuration.")
+        print(f"❌ No Google AI API key found and missing Vertex AI variables: {', '.join(missing_vars)}")
+        print("Please either:")
+        print("1. Set GOOGLE_API_KEY in your .env file (recommended), OR")
+        print("2. Configure Vertex AI with the missing variables")
         return False
     
-    print("✅ Environment configuration looks good!")
+    print("✅ Vertex AI configuration found!")
+    # Set the environment variable to use Vertex AI
+    os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'TRUE'
     return True
 
 

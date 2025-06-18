@@ -83,19 +83,20 @@ def get_model_config():
     vertex_location = os.getenv('GOOGLE_CLOUD_REGION') or os.getenv('VERTEX_AI_LOCATION', 'us-central1')
     
     if google_api_key:
-        # Use Google AI API with latest Gemini 2.5 Pro
+        # Use Google AI API - set environment variables for ADK
+        os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'FALSE'
         return {
-            "model": os.getenv("JOURNALING_AGENT_MODEL", "gemini-2.5-pro"),
-            "api_key": google_api_key
+            "model": os.getenv("JOURNALING_AGENT_MODEL", "gemini-2.5-pro")
         }
     elif vertex_project:
-        # Use Vertex AI with latest Gemini 2.5 Pro (now available!)
-        model_name = os.getenv("JOURNALING_AGENT_MODEL", "gemini-2.5-pro")
+        # Use working Vertex AI models only (fallback)
+        os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'TRUE'
+        model_name = os.getenv("JOURNALING_AGENT_MODEL", "gemini-1.5-pro-001")
         return {
             "model": f"vertexai/{vertex_project}/{vertex_location}/{model_name}"
         }
     else:
-        # Fallback - use latest Gemini model
+        # Final fallback - use stable Gemini model
         return {
             "model": os.getenv("JOURNALING_AGENT_MODEL", "gemini-2.5-pro")
         }

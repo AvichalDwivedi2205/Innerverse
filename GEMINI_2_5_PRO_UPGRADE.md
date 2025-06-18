@@ -8,9 +8,9 @@
 
 All three agents in your Innerverse mental health system have been upgraded to use **Gemini 2.5 Pro**, Google's most advanced AI model:
 
-- ✅ **Journaling Agent** → `gemini-2.5-pro`
-- ✅ **Therapy Agent** → `gemini-2.5-pro`  
-- ✅ **Mental Orchestrator Agent** → `gemini-2.5-pro`
+- ✅ **Journaling Agent** → `gemini-2.5-pro-preview-05-06`
+- ✅ **Therapy Agent** → `gemini-2.5-pro-preview-05-06`  
+- ✅ **Mental Orchestrator Agent** → `gemini-2.5-pro-preview-05-06`
 
 ## 🏆 Gemini 2.5 Pro Performance Benefits
 
@@ -47,12 +47,12 @@ All three agents in your Innerverse mental health system have been upgraded to u
 ## 🔧 Technical Changes Made
 
 ### 1. Agent Entry Points (`agents/*/agent.py`)
-- Updated fallback model configurations to `gemini-2.5-pro`
+- Updated fallback model configurations to `gemini-2.5-pro-preview-05-06`
 - Enhanced Vertex AI model paths with latest model
 
 ### 2. Main Agent Files (`agents/*/agent.py`)
 - Updated `get_model_config()` functions
-- Changed default models from `gemini-1.5-pro` to `gemini-2.5-pro`
+- Changed default models from `gemini-1.5-pro` to `gemini-2.5-pro-preview-05-06`
 - Updated Vertex AI model paths
 
 ### 3. Configuration Updates
@@ -61,7 +61,7 @@ All three agents in your Innerverse mental health system have been upgraded to u
 "model": "gemini-1.5-pro-001"
 
 # After  
-"model": "gemini-2.5-pro"
+"model": "gemini-2.5-pro-preview-05-06"
 ```
 
 ## 🚀 Verified Working Features

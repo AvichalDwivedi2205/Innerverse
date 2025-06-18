@@ -29,11 +29,11 @@ except ImportError as e:
         model="gemini-2.5-pro",
         name="mental_orchestrator_agent_fallback",
         instruction=f"""
-        You are a mental orchestrator agent focused on pattern analysis and empowerment.
+        You are a mental orchestrator agent focused on empowerment and self-creation.
         Today's date: {date.today()}
         
-        Analyze internal patterns and coordinate insights to help users recognize their role as creators.
-        Focus on empowerment and self-responsibility.
+        Analyze patterns and provide insights for user empowerment.
+        Focus on internal awareness and personal growth.
         """,
         tools=[simple_orchestrator_response],
         generate_content_config=types.GenerateContentConfig(temperature=0.2),

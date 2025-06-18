@@ -36,11 +36,21 @@ def get_firestore_client():
     return _db
 
 def get_gemini_model():
-    """Get Gemini model with lazy initialization."""
+    """Get Gemini model with lazy initialization using Google AI API."""
     global _model
     if _model is None:
-        vertexai.init()
-        _model = GenerativeModel("gemini-2.5-pro")
+        import os
+        google_api_key = os.getenv('GOOGLE_API_KEY')
+        
+        if google_api_key:
+            # Use Google AI API directly
+            import google.generativeai as genai
+            genai.configure(api_key=google_api_key)
+            _model = genai.GenerativeModel('gemini-2.5-pro')
+        else:
+            # Fallback to Vertex AI
+            vertexai.init()
+            _model = GenerativeModel("gemini-1.5-pro-001")
     return _model
 
 
@@ -48,17 +58,58 @@ async def standardize_journal_text(
     raw_text: str,
     tool_context: ToolContext,
 ) -> JournalingToolResult:
-    """Tool to standardize journal text using Gemini-2.5-Pro with empowerment focus."""
+    """Tool to standardize journal text using gemini-2.5-pro with empowerment focus."""
     
     try:
         prompt = get_standardization_prompt()
-        full_prompt = f"{prompt}\n\nRaw Journal Text: {raw_text}"
+        full_prompt = f"{prompt}\n\nRaw Journal Text: {raw_text}\n\nReturn ONLY valid JSON in the specified format."
         
         response = get_gemini_model().generate_content(full_prompt)
-        standardized_text = response.text
+        standardized_text = response.text.strip()
+        
+        # Clean the response text to extract JSON
+        # Remove markdown code blocks if present
+        if standardized_text.startswith('```'):
+            lines = standardized_text.split('\n')
+            # Find the start and end of the JSON content
+            start_idx = 0
+            end_idx = len(lines)
+            for i, line in enumerate(lines):
+                if line.strip().startswith('{'):
+                    start_idx = i
+                    break
+            for i in range(len(lines)-1, -1, -1):
+                if lines[i].strip().endswith('}'):
+                    end_idx = i + 1
+                    break
+            standardized_text = '\n'.join(lines[start_idx:end_idx])
         
         # Parse JSON response
-        standardized_entry = json.loads(standardized_text)
+        try:
+            standardized_entry = json.loads(standardized_text)
+        except json.JSONDecodeError as json_error:
+            # Try to fix common JSON issues
+            cleaned_text = standardized_text.replace("'", '"')  # Replace single quotes with double quotes
+            try:
+                standardized_entry = json.loads(cleaned_text)
+            except json.JSONDecodeError:
+                return JournalingToolResult.error_result(
+                    message="Failed to parse standardized entry JSON",
+                    error_details=f"JSON Error: {json_error}. Raw response: {standardized_text[:500]}",
+                    next_actions=["retry_standardization"]
+                )
+        
+        # Initialize session state if needed
+        if "journal_session" not in tool_context.state:
+            tool_context.state["journal_session"] = {
+                "raw_text": "",
+                "standardized_entry": {},
+                "insights": {},
+                "reflection_question": "",
+                "embedding_id": "",
+                "created_at": datetime.now().isoformat(),
+                "status": "active"
+            }
         
         # Store in context
         tool_context.state["journal_session"]["raw_text"] = raw_text

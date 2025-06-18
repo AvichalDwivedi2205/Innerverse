@@ -34,18 +34,19 @@ except ImportError as e:
     vertex_location = os.getenv('GOOGLE_CLOUD_REGION') or os.getenv('VERTEX_AI_LOCATION', 'us-central1')
     
     if google_api_key:
-        # Use Google AI API with latest Gemini 2.5 Pro
+        # Use Google AI API with available Gemini models
+        os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'FALSE'
         model_config = {
-            "model": "gemini-2.5-pro",
-            "api_key": google_api_key
+            "model": "gemini-2.5-pro"
         }
     elif vertex_project:
-        # Use Vertex AI with latest Gemini 2.5 Pro model
+        # Use working Vertex AI models only
+        os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'TRUE'
         model_config = {
-            "model": f"vertexai/{vertex_project}/{vertex_location}/gemini-2.5-pro"
+            "model": f"vertexai/{vertex_project}/{vertex_location}/gemini-1.5-pro-001"
         }
     else:
-        # Fallback to latest Gemini model configuration
+        # Fallback to stable Gemini model configuration
         model_config = {
             "model": "gemini-2.5-pro"
         }

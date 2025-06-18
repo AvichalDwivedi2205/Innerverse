@@ -40,11 +40,21 @@ def get_firestore_client():
     return _db
 
 def get_gemini_model():
-    """Get Gemini model with lazy initialization."""
+    """Get Gemini model with lazy initialization using Google AI API."""
     global _model
     if _model is None:
-        vertexai.init()
-        _model = GenerativeModel("gemini-2.5-pro")
+        import os
+        google_api_key = os.getenv('GOOGLE_API_KEY')
+        
+        if google_api_key:
+            # Use Google AI API directly
+            import google.generativeai as genai
+            genai.configure(api_key=google_api_key)
+            _model = genai.GenerativeModel('gemini-2.5-pro')
+        else:
+            # Fallback to Vertex AI
+            vertexai.init()
+            _model = GenerativeModel("gemini-1.5-pro-001")
     return _model
 
 
