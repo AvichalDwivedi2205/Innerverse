@@ -66,30 +66,32 @@ def run_adk_web(agent_path="agents/", port=8000, host="localhost"):
         port: Port to run the web interface on
         host: Host to bind to
     """
-    print(f"🚀 Starting ADK web interface...")
-    print(f"📍 Agent path: {agent_path}")
-    print(f"🌐 URL: http://{host}:{port}")
-    print("Press Ctrl+C to stop")
-    
-    # Build command
-    cmd = ["adk", "web", agent_path]
-    
-    # Set environment variables for ADK
-    env = os.environ.copy()
-    env["ADK_HOST"] = host
-    env["ADK_PORT"] = str(port)
-    
     try:
-        # Run ADK web
-        result = subprocess.run(cmd, env=env, check=True)
-        print("✅ ADK web interface started successfully!")
+        # Set up environment variables
+        os.environ['GOOGLE_CLOUD_PROJECT'] = 'gen-lang-client-0307630688'
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'service-account-key.json'
+        
+        print("🚀 Starting ADK web interface...")
+        print(f"📍 Agent path: {agent_path}")
+        print(f"🌐 URL: http://localhost:{port}")
+        print("Press Ctrl+C to stop")
+        
+        # Start the ADK web interface with custom port
+        result = subprocess.run([
+            "adk", "web", agent_path, "--port", str(port), "--host", "0.0.0.0"
+        ], check=True)
+        
         return True
+        
     except subprocess.CalledProcessError as e:
         print(f"❌ Failed to start ADK web interface: {e}")
         return False
     except KeyboardInterrupt:
         print("\n🛑 ADK web interface stopped by user")
         return True
+    except Exception as e:
+        print(f"❌ Unexpected error: {e}")
+        return False
 
 
 def main():

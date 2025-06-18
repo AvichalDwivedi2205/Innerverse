@@ -67,12 +67,12 @@ def get_standardization_prompt() -> str:
     """Return prompt for journal text standardization."""
     
     return """Convert this journal text into a structured format emphasizing internal thought patterns and personal empowerment. Format:
-{
-  'date': 'YYYY-MM-DD',
-  'mood': 'primary emotional state',
-  'keyEvents': 'brief external events',
-  'reflection': 'focus on internal thoughts, beliefs, and personal power in the situation'
-}
+{{
+  "date": "YYYY-MM-DD",
+  "mood": "primary emotional state",
+  "keyEvents": "brief external events",
+  "reflection": "focus on internal thoughts, beliefs, and personal power in the situation"
+}}
 Emphasize how the user's internal world creates their experience."""
 
 
@@ -84,13 +84,13 @@ def get_insights_prompt() -> str:
 Journal Entry: {entry}
 
 Generate insights in this exact JSON format:
-{
-  'sentiment': 'negative|neutral|positive',
-  'emotion': 'primary emotion detected',
-  'intensity': 1-10 scale,
-  'themes': ['internal_theme1', 'internal_theme2'],
-  'triggers': ['internal_trigger1', 'internal_trigger2']
-}
+{{
+  "sentiment": "negative|neutral|positive",
+  "emotion": "primary emotion detected",
+  "intensity": "1-10 scale",
+  "themes": ["internal_theme1", "internal_theme2"],
+  "triggers": ["internal_trigger1", "internal_trigger2"]
+}}
 
 Focus on internal thought patterns, self-created beliefs, and areas where the user can reclaim personal power."""
 
@@ -100,6 +100,6 @@ def get_reflection_question_prompt() -> str:
     
     return """Based on this journal entry with insights: {entry_with_insights}, generate ONE empowering Reflection Question that shifts focus from external circumstances to internal power and self-creation.
 
-Format: 'What internal belief/thought/power can you explore about [specific situation]?'
+Format: "What internal belief/thought/power can you explore about [specific situation]?"
 
 Focus on helping the user realize they are the creator of their experience."""

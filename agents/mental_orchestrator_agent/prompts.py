@@ -95,7 +95,7 @@ def get_exercise_recommendation_prompt() -> str:
     
     return """Based on this internal theme/emotion pattern: {theme}, recommend ONE exercise that builds internal awareness and personal empowerment:
 
-Available exercises: CBT (thought examination), Mindfulness (present awareness), Gratitude Practice (appreciation creation), Progressive Muscle Relaxation (body awareness), Reflection Questions (internal exploration)
+Available exercises: CBT (thought examination), Mindfulness (present awareness), Gratitude Practice (appreciation creation), Progressive Muscle Relaxation (body awareness)
 
 Choose the exercise that best helps user recognize their creative power in this area."""
 

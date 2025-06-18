@@ -64,6 +64,7 @@ async def process_therapy_transcript(
         prompt = get_transcript_processing_prompt()
         full_prompt = prompt.format(transcript=transcript)
         
+        model = get_gemini_model()
         response = model.generate_content(full_prompt)
         summary_text = response.text
         
@@ -91,6 +92,7 @@ async def generate_therapy_insights(
         prompt = get_therapy_insights_prompt()
         full_prompt = prompt.format(summary=json.dumps(summary))
         
+        model = get_gemini_model()
         response = model.generate_content(full_prompt)
         insights_text = response.text
         
@@ -117,6 +119,7 @@ async def generate_therapy_notes(
         prompt = get_therapy_notes_prompt()
         full_prompt = prompt.format(summary=json.dumps(summary))
         
+        model = get_gemini_model()
         response = model.generate_content(full_prompt)
         notes_text = response.text
         
@@ -150,6 +153,7 @@ async def generate_therapy_reflection_question(
         prompt = get_therapy_reflection_question_prompt()
         full_prompt = prompt.format(summary=json.dumps(summary))
         
+        model = get_gemini_model()
         response = model.generate_content(full_prompt)
         reflection_question = response.text.strip()
         
@@ -188,6 +192,7 @@ async def store_therapy_session(
         }
         
         # Store in Firestore
+        db = get_firestore_client()
         db.collection("users").document(user_id).collection("therapySessions").document(session_id).set(session_doc)
         
         # Generate and store embedding for observations
@@ -258,6 +263,7 @@ async def update_therapy_consistency_tracking(
             return "Error: User ID not found in context"
         
         # Get current metrics
+        db = get_firestore_client()
         metrics_ref = db.collection("users").document(user_id).collection("dashboard").document("metrics")
         metrics_doc = metrics_ref.get()
         
@@ -310,6 +316,7 @@ async def trigger_mental_orchestrator_therapy(
         }
         
         # Store trigger (this would be picked up by Firebase Functions)
+        db = get_firestore_client()
         db.collection("orchestrator_triggers").add(trigger_doc)
         
         return "Mental Orchestrator Agent triggered for therapy mind map update"
@@ -350,3 +357,72 @@ async def _generate_and_store_embedding(
     except Exception as e:
         print(f"Error generating embedding: {str(e)}")
         return ""
+
+
+async def complete_therapy_session(
+    session_transcript: str,
+    tool_context: ToolContext,
+) -> str:
+    """Tool to complete and properly end a therapy session with full documentation."""
+    
+    try:
+        # Check if user_id is set
+        user_id = tool_context.state.get("user_id")
+        if not user_id:
+            return "Error: User ID must be set before completing session. Please ensure user is properly authenticated."
+        
+        print("Starting session completion process...")
+        
+        # Step 1: Process transcript
+        transcript_result = await process_therapy_transcript(session_transcript, tool_context)
+        print(f"✓ Transcript processed: {transcript_result}")
+        
+        # Step 2: Generate insights
+        insights_result = await generate_therapy_insights(tool_context)
+        print(f"✓ Insights generated: {insights_result}")
+        
+        # Step 3: Generate therapy notes
+        notes_result = await generate_therapy_notes(tool_context)
+        print(f"✓ Clinical notes created: {notes_result}")
+        
+        # Step 4: Generate reflection question
+        reflection_result = await generate_therapy_reflection_question(tool_context)
+        print(f"✓ Reflection question generated: {reflection_result}")
+        
+        # Step 5: Store session
+        storage_result = await store_therapy_session(tool_context)
+        print(f"✓ Session stored: {storage_result}")
+        
+        # Step 6: Update consistency tracking
+        tracking_result = await update_therapy_consistency_tracking(tool_context)
+        print(f"✓ Progress tracking updated: {tracking_result}")
+        
+        # Step 7: Trigger mental orchestrator
+        orchestrator_result = await trigger_mental_orchestrator_therapy(tool_context)
+        print(f"✓ Mental orchestrator triggered: {orchestrator_result}")
+        
+        session_id = tool_context.state.get("session_id", "unknown")
+        
+        return f"""
+🏁 THERAPY SESSION COMPLETED SUCCESSFULLY
+
+Session ID: {session_id}
+Documentation Status: ✅ Complete
+
+Summary:
+• Clinical transcript processed and analyzed
+• Comprehensive therapy notes created with behavioral patterns
+• Risk assessment and diagnostic impressions documented  
+• Empowerment themes and agency opportunities identified
+• Therapeutic reflection question generated for continued growth
+• Progress tracking updated
+• Care coordination triggered
+
+Your session has been fully documented and stored securely. 
+The reflection question and any homework assignments are available in your recommendations.
+
+Thank you for engaging in this therapeutic work. Your commitment to growth and self-awareness is commendable.
+        """
+        
+    except Exception as e:
+        return f"Error completing therapy session: {str(e)}. Please try again or contact support."

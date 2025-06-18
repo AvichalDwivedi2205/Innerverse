@@ -14,6 +14,7 @@ from google.adk.agents.callback_context import CallbackContext
 
 from .prompts import return_instructions_therapy
 from .tools import (
+    complete_therapy_session,
     process_therapy_transcript,
     generate_therapy_insights,
     generate_therapy_notes,
@@ -96,7 +97,7 @@ therapy_agent = Agent(
     instruction=return_instructions_therapy(),
     global_instruction=(
         f"""
-        You are an Empowerment-Focused Therapy Agent for mental health.
+        You are a Therapy Agent for mental health.
         Your role is to conduct therapy sessions that shift users from victim consciousness to creator consciousness.
         Today's date: {date_today}
         
@@ -105,6 +106,7 @@ therapy_agent = Agent(
         """
     ),
     tools=[
+        complete_therapy_session,
         process_therapy_transcript,
         generate_therapy_insights,
         generate_therapy_notes,
