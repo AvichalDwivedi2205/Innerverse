@@ -9,7 +9,7 @@ Your **Pinecone configuration is PERFECT** and the **core functionality for web 
 Your `.env` file should contain:
 ```env
 # ===== Pinecone Configuration (WORKING!) =====
-PINECONE_API_KEY=pcsk_55yVW8_Fvs37hZWCa6BEpa2g27rHgFAkJW7HPoU63yURJ3tmPy7E4SiWPTggiFeNVaKWF7
+PINECONE_API_KEY=your-pinecone-api-key-here
 PINECONE_INDEX_NAME=innerverse
 PINECONE_HOST=https://innerverse-uxvd5v0.svc.aped-4627-b74a.pinecone.io
 

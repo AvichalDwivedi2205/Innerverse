@@ -26,7 +26,7 @@ except ImportError as e:
         return f"Thank you for sharing in our therapy session. I hear your concerns about: {transcript[:100]}... Let's explore how you can take empowered action in this situation."
     
     root_agent = Agent(
-        model="gemini-2.5-pro",
+        model="gemini-2.5-flash",
         name="therapy_agent_fallback",
         instruction=f"""
         You are a therapy agent focused on empowerment and self-creation.

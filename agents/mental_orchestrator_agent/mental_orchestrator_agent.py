@@ -81,19 +81,19 @@ def get_orchestrator_model_config():
         # Use Google AI API - set environment variables for ADK
         os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'FALSE'
         return {
-            "model": os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-2.5-pro")
+            "model": os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-2.5-flash")
         }
     elif vertex_project:
         # Use working Vertex AI models only (fallback)
         os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'TRUE'
-        model_name = os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-1.5-pro-001")
+        model_name = os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-2.5-flash")
         return {
             "model": f"vertexai/{vertex_project}/{vertex_location}/{model_name}"
         }
     else:
         # Final fallback - use stable Gemini model
         return {
-            "model": os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-2.5-pro")
+            "model": os.getenv("ORCHESTRATOR_AGENT_MODEL", "gemini-2.5-flash")
         }
 
 orchestrator_model_config = get_orchestrator_model_config()

@@ -64,7 +64,7 @@ def get_gemini_model():
                 # Use Google AI API directly
                 import google.generativeai as genai
                 genai.configure(api_key=google_api_key)
-                _model = genai.GenerativeModel('gemini-2.5-pro')
+                _model = genai.GenerativeModel('gemini-2.5-flash')
                 print(f"✅ Gemini model initialized with Google AI API")
             except Exception as e:
                 print(f"❌ Google AI API initialization failed: {e}")
@@ -73,7 +73,7 @@ def get_gemini_model():
             try:
                 # Fallback to Vertex AI
                 vertexai.init(project='gen-lang-client-0307630688', location='us-central1')
-                _model = GenerativeModel("gemini-1.5-pro-001")
+                _model = GenerativeModel("gemini-2.5-flash")
                 print(f"✅ Gemini model initialized with Vertex AI")
             except Exception as e:
                 print(f"❌ Vertex AI initialization failed: {e}")
@@ -130,7 +130,7 @@ async def standardize_journal_text(
     raw_text: str,
     tool_context: ToolContext,
 ) -> JournalingToolResult:
-    """Tool to standardize journal text using gemini-2.5-pro with empowerment focus."""
+    """Tool to standardize journal text using gemini-2.5-flash with empowerment focus."""
     
     try:
         prompt = get_standardization_prompt()

@@ -23,10 +23,10 @@ GOOGLE_CLOUD_REGION=us-central1
 # GOOGLE_GENAI_USE_VERTEXAI=TRUE
 
 # ===== Agent Model Configuration =====
-# Model names for each agent (defaults to gemini-2.5-pro if not set)
-JOURNALING_AGENT_MODEL=gemini-2.5-pro
-THERAPY_AGENT_MODEL=gemini-2.5-pro
-ORCHESTRATOR_AGENT_MODEL=gemini-2.5-pro
+# Model names for each agent (defaults to gemini-2.5-flash if not set)
+JOURNALING_AGENT_MODEL=gemini-2.5-flash
+THERAPY_AGENT_MODEL=gemini-2.5-flash
+ORCHESTRATOR_AGENT_MODEL=gemini-2.5-flash
 
 # ===== Vertex AI Configuration (FOR EMBEDDINGS ONLY) =====
 # Vertex AI project and location (used for embeddings)

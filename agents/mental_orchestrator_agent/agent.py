@@ -26,7 +26,7 @@ except ImportError as e:
         return f"Mental orchestration triggered. Processing data: {trigger_data[:100]}... Analyzing patterns for empowerment insights and mind map updates."
     
     root_agent = Agent(
-        model="gemini-2.5-pro",
+        model="gemini-2.5-flash",
         name="mental_orchestrator_agent_fallback",
         instruction=f"""
         You are a mental orchestrator agent focused on empowerment and self-creation.

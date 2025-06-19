@@ -50,11 +50,11 @@ def get_gemini_model():
             # Use Google AI API directly
             import google.generativeai as genai
             genai.configure(api_key=google_api_key)
-            _model = genai.GenerativeModel('gemini-2.5-pro')
+            _model = genai.GenerativeModel('gemini-2.5-flash')
         else:
             # Fallback to Vertex AI
             vertexai.init()
-            _model = GenerativeModel("gemini-1.5-pro-001")
+            _model = GenerativeModel("gemini-2.5-flash")
     return _model
 
 

@@ -68,7 +68,7 @@ def test_google_ai():
             return False
             
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.5-pro')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         response = model.generate_content("Say hello for hackathon test")
         print(f"✅ Google AI API working: {response.text[:50]}...")

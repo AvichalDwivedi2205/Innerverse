@@ -37,18 +37,18 @@ except ImportError as e:
         # Use Google AI API with available Gemini models
         os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'FALSE'
         model_config = {
-            "model": "gemini-2.5-pro"
+            "model": "gemini-2.5-flash"
         }
     elif vertex_project:
         # Use working Vertex AI models only
         os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'TRUE'
         model_config = {
-            "model": f"vertexai/{vertex_project}/{vertex_location}/gemini-1.5-pro-001"
+            "model": f"vertexai/{vertex_project}/{vertex_location}/gemini-2.5-flash"
         }
     else:
         # Fallback to stable Gemini model configuration
         model_config = {
-            "model": "gemini-2.5-pro"
+            "model": "gemini-2.5-flash"
         }
     
     root_agent = Agent(
