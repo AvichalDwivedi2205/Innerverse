@@ -24,6 +24,9 @@ from .prompts import (
     get_therapy_reflection_question_prompt
 )
 
+# Phase 2: Import enhanced session timer
+from ..common.session_timer import EnhancedSessionTimer, SessionType, TimerToolResult
+
 # Initialize clients lazily to avoid import-time errors
 _db = None
 _model = None
@@ -426,3 +429,261 @@ Thank you for engaging in this therapeutic work. Your commitment to growth and s
         
     except Exception as e:
         return f"Error completing therapy session: {str(e)}. Please try again or contact support."
+
+
+# =================================
+# PHASE 2: ENHANCED SESSION TIMING TOOLS
+# =================================
+
+async def choose_session_duration(
+    user_id: str,
+    preferences: Dict[str, Any] = None,
+    tool_context: ToolContext = None
+) -> str:
+    """Tool to present therapy session duration options and recommendations.
+    
+    Args:
+        user_id: User identifier
+        preferences: User preferences for session timing
+        tool_context: Tool context for state management
+        
+    Returns:
+        String describing available session options
+    """
+    try:
+        # Create temporary timer to get options
+        temp_timer = EnhancedSessionTimer(user_id, SessionType.THERAPY, "standard_60")
+        
+        result = await temp_timer.choose_session_duration(preferences or {})
+        
+        if tool_context:
+            tool_context.state["session_options"] = result.data
+            
+        if result.success:
+            options = result.data["available_sessions"]
+            return (
+                f"Session duration options available:\n\n"
+                f"🕐 **60-MINUTE SESSION (Recommended for deep work)**\n"
+                f"   - Pre-session: {options['standard_60']['phases'][0]['duration']} min - {options['standard_60']['phases'][0]['description']}\n"
+                f"   - Opening: {options['standard_60']['phases'][1]['duration']} min - {options['standard_60']['phases'][1]['description']}\n"
+                f"   - Working: {options['standard_60']['phases'][2]['duration']} min - {options['standard_60']['phases'][2]['description']}\n"
+                f"   - Integration: {options['standard_60']['phases'][3]['duration']} min - {options['standard_60']['phases'][3]['description']}\n"
+                f"   - Closing: {options['standard_60']['phases'][4]['duration']} min - {options['standard_60']['phases'][4]['description']}\n"
+                f"   Best for: {options['standard_60']['recommended_for']}\n\n"
+                f"🕐 **30-MINUTE SESSION (Focused sessions)**\n"
+                f"   - Pre-session: {options['short_30']['phases'][0]['duration']} min - {options['short_30']['phases'][0]['description']}\n"
+                f"   - Opening: {options['short_30']['phases'][1]['duration']} min - {options['short_30']['phases'][1]['description']}\n"
+                f"   - Working: {options['short_30']['phases'][2]['duration']} min - {options['short_30']['phases'][2]['description']}\n"
+                f"   - Integration: {options['short_30']['phases'][3]['duration']} min - {options['short_30']['phases'][3]['description']}\n"
+                f"   - Closing: {options['short_30']['phases'][4]['duration']} min - {options['short_30']['phases'][4]['description']}\n"
+                f"   Best for: {options['short_30']['recommended_for']}"
+            )
+        else:
+            return f"Error getting session options: {result.message}"
+            
+    except Exception as e:
+        return f"Error presenting session duration options: {str(e)}"
+
+
+async def start_therapy_session_timer(
+    user_id: str,
+    session_type: str = "standard_60",
+    tool_context: ToolContext = None
+) -> str:
+    """Tool to start therapy session timer with exact phase timing.
+    
+    Args:
+        user_id: User identifier
+        session_type: "standard_60" or "short_30"
+        tool_context: Tool context for state management
+        
+    Returns:
+        String describing session start status
+    """
+    try:
+        # Create enhanced session timer
+        timer = EnhancedSessionTimer(
+            user_id=user_id,
+            session_type=SessionType.THERAPY,
+            therapy_session_type=session_type
+        )
+        
+        # Start the session
+        result = await timer.start_session()
+        
+        if tool_context:
+            tool_context.state["session_timer"] = timer
+            tool_context.state["session_id"] = result.session_id
+            
+        if result.success:
+            session_data = result.data
+            return (
+                f"✅ **THERAPY SESSION STARTED**\n\n"
+                f"📊 **Session Details:**\n"
+                f"   - Type: {session_data['therapy_session_type']}\n"
+                f"   - Total Duration: {session_data['total_duration']} minutes\n"
+                f"   - Session ID: {result.session_id}\n\n"
+                f"🎯 **Current Phase:** {session_data['current_phase']}\n"
+                f"   - Duration: {session_data['phase_duration']} minutes\n\n"
+                f"📋 **All Phases:**\n" +
+                "\n".join([
+                    f"   {i+1}. {p['name'].title()}: {p['duration']} min - {p['description']}"
+                    for i, p in enumerate(session_data['phases'])
+                ]) +
+                f"\n\n⏰ **Background monitoring active** - Automatic phase transitions enabled"
+            )
+        else:
+            return f"❌ Error starting session: {result.message}"
+            
+    except Exception as e:
+        return f"Error starting therapy session timer: {str(e)}"
+
+
+async def get_session_timer_status(
+    tool_context: ToolContext = None
+) -> str:
+    """Tool to get real-time session progress with exact timing.
+    
+    Args:
+        tool_context: Tool context containing session timer
+        
+    Returns:
+        String describing current session status
+    """
+    try:
+        if not tool_context or "session_timer" not in tool_context.state:
+            return "❌ No active session timer found"
+            
+        timer = tool_context.state["session_timer"]
+        result = await timer.get_session_timer_status()
+        
+        if result.success:
+            data = result.data
+            current_phase = data.get("current_phase")
+            
+            if current_phase:
+                return (
+                    f"📊 **SESSION STATUS**\n\n"
+                    f"🎯 **Current Phase:** {current_phase['name'].title()}\n"
+                    f"   - Remaining: {current_phase['remaining_minutes']} min {current_phase['remaining_seconds'] % 60} sec\n"
+                    f"   - Progress: {current_phase['progress_percentage']:.1f}%\n\n"
+                    f"⏱️ **Session Progress:**\n"
+                    f"   - Total Elapsed: {data['total_elapsed_minutes']} minutes\n"
+                    f"   - Total Duration: {data['total_duration_minutes']} minutes\n"
+                    f"   - Overall Progress: {data['completion_percentage']:.1f}%\n\n"
+                    f"📝 **Phase History:**\n" +
+                    (
+                        "\n".join([
+                            f"   ✅ {h['phase'].title()}: {h['actual_duration']/60:.1f}min"
+                            for h in data.get('phase_history', [])
+                            if h['status'] == 'completed'
+                        ]) if data.get('phase_history') else "   No completed phases yet"
+                    ) +
+                    f"\n\n🔄 **Status:** {'Active' if data['is_active'] else 'Inactive'}"
+                )
+            else:
+                return f"📊 Session timer active but no current phase data available"
+        else:
+            return f"❌ Error getting session status: {result.message}"
+            
+    except Exception as e:
+        return f"Error getting session timer status: {str(e)}"
+
+
+async def transition_to_next_phase(
+    force: bool = False,
+    tool_context: ToolContext = None
+) -> str:
+    """Tool for manual phase transition (therapist override).
+    
+    Args:
+        force: Whether to force transition regardless of timing
+        tool_context: Tool context containing session timer
+        
+    Returns:
+        String describing phase transition result
+    """
+    try:
+        if not tool_context or "session_timer" not in tool_context.state:
+            return "❌ No active session timer found"
+            
+        timer = tool_context.state["session_timer"]
+        result = await timer.transition_to_next_phase_manual(force)
+        
+        if result.success:
+            data = result.data
+            if data.get("completed"):
+                return (
+                    f"🏁 **SESSION COMPLETED**\n\n"
+                    f"✅ All phases have been completed!\n"
+                    f"🎯 Final phase index: {data['phase_index']}\n"
+                    f"📊 Session has ended successfully."
+                )
+            else:
+                return (
+                    f"🔄 **PHASE TRANSITION SUCCESSFUL**\n\n"
+                    f"🎯 **New Current Phase:** {data['current_phase'].title()}\n"
+                    f"📍 Phase Index: {data['phase_index'] + 1}\n"
+                    f"⏰ Transition completed at exact timing"
+                )
+        else:
+            return f"❌ Error transitioning phase: {result.message}"
+            
+    except Exception as e:
+        return f"Error transitioning to next phase: {str(e)}"
+
+
+async def complete_therapy_session_with_timer(
+    user_notes: str = None,
+    tool_context: ToolContext = None
+) -> str:
+    """Tool to complete therapy session with enhanced timer data.
+    
+    Args:
+        user_notes: Optional notes from the therapy session
+        tool_context: Tool context containing session timer and session data
+        
+    Returns:
+        String describing session completion with timer data
+    """
+    try:
+        if not tool_context:
+            return "❌ No tool context available"
+            
+        # Complete timer session if active
+        timer_result = None
+        if "session_timer" in tool_context.state:
+            timer = tool_context.state["session_timer"]
+            timer_result = await timer.complete_session(user_notes)
+        
+        # Store the regular therapy session data
+        session_result = await store_therapy_session(tool_context)
+        
+        if timer_result and timer_result.success:
+            timer_data = timer_result.data
+            return (
+                f"🏁 **THERAPY SESSION COMPLETED WITH TIMER DATA**\n\n"
+                f"✅ **Session Summary:**\n"
+                f"   - Type: {timer_data.get('therapy_session_type', 'standard_60')}\n"
+                f"   - Planned Duration: {timer_data.get('total_duration_planned', 60)} minutes\n"
+                f"   - Actual Duration: {timer_data.get('total_duration_actual', 0):.1f} minutes\n"
+                f"   - Completion Rate: {timer_data.get('completion_percentage', 100):.1f}%\n\n"
+                f"📊 **Phase Completion:**\n"
+                f"   - Phases Completed: {timer_data.get('phases_completed', 0)}/{timer_data.get('total_phases', 5)}\n\n"
+                f"📝 **Storage Results:**\n"
+                f"   - Timer Data: {'Stored' if timer_data.get('stored', False) else 'Failed to store'}\n"
+                f"   - Session Data: {session_result}\n\n"
+                f"💭 **User Notes:** {user_notes or 'None provided'}\n\n"
+                f"🎯 **Session ID:** {timer_result.session_id}"
+            )
+        else:
+            return (
+                f"🏁 **THERAPY SESSION COMPLETED (NO TIMER)**\n\n"
+                f"📝 **Storage Results:**\n"
+                f"   - Session Data: {session_result}\n\n"
+                f"💭 **User Notes:** {user_notes or 'None provided'}\n\n"
+                f"⚠️ Timer completion: {timer_result.message if timer_result else 'No timer was active'}"
+            )
+            
+    except Exception as e:
+        return f"Error completing therapy session with timer: {str(e)}"
