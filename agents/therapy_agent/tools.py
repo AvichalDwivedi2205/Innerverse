@@ -145,28 +145,106 @@ async def generate_therapy_notes(
         return f"Error generating therapy notes: {str(e)}"
 
 
+async def generate_therapy_reflection_questions(
+    tool_context: ToolContext,
+) -> str:
+    """
+    Phase 3: Generate complete set of 5 categorized therapy reflection questions.
+    Replaces single reflection question generation with enhanced system.
+    Always generates: 2 daily + 2 deep + 1 action = 5 questions total.
+    """
+    
+    try:
+        # Import enhanced reflection generator
+        from ..common.reflection_generator import EnhancedReflectionGenerator
+        
+        # Get therapy session data
+        therapy_session = tool_context.state["therapy_session"]
+        summary = therapy_session["summary"]
+        insights = therapy_session.get("insights", {})
+        
+        # Initialize enhanced reflection generator
+        reflection_generator = EnhancedReflectionGenerator()
+        
+        # Prepare context data from therapy session
+        session_data = {
+            "transcript": therapy_session.get("transcript", ""),
+            "summary": summary,
+            "insights": insights,
+            "challenges": insights.get("challenges", []),
+            "emotions": insights.get("emotions", []),
+            "topics": insights.get("themes", ["therapy session", "personal growth"]),
+            "therapy_notes": therapy_session.get("therapy_notes", [])
+        }
+        
+        user_context = {
+            "preferences": ["therapy", "professional guidance", "empowerment"],
+            "source": "therapy"
+        }
+        
+        # Generate complete question set (2 daily + 2 deep + 1 action = 5 questions)
+        question_set = await reflection_generator.generate_complete_question_set(
+            session_data=session_data,
+            insights=insights,
+            user_context=user_context,
+            source_type="therapy"
+        )
+        
+        # Get question summary
+        summary_data = reflection_generator.get_question_summary(question_set)
+        
+        # Store in context
+        tool_context.state["therapy_session"]["reflection_questions"] = question_set
+        tool_context.state["therapy_session"]["reflection_summary"] = summary_data
+        
+        # Format response
+        question_counts = summary_data["category_breakdown"]
+        return (
+            f"✅ **THERAPY REFLECTION QUESTIONS GENERATED**\n\n"
+            f"📊 **Generated {summary_data['total_questions']} categorized questions:**\n"
+            f"   🔹 Daily Practice: {question_counts['daily_practice']} questions\n"
+            f"   🔹 Deep Reflection: {question_counts['deep_reflection']} questions\n"
+            f"   🔹 Action Items: {question_counts['action_items']} questions\n\n"
+            f"🎯 **Question Preview:**\n"
+        ) + _format_question_preview(question_set) + (
+            f"\n\n💡 **Enhanced delivery system activated** - Questions scheduled for optimal timing"
+        )
+        
+    except Exception as e:
+        return f"❌ Error generating enhanced therapy reflection questions: {str(e)}"
+
+
+def _format_question_preview(question_set) -> str:
+    """Format a preview of the generated questions."""
+    preview = ""
+    
+    for category, questions in question_set.items():
+        category_name = category.value.replace("_", " ").title()
+        preview += f"\n📝 **{category_name}:**\n"
+        
+        for i, question in enumerate(questions, 1):
+            preview += f"   {i}. {question.question[:80]}{'...' if len(question.question) > 80 else ''}\n"
+    
+    return preview
+
+
+def _get_therapy_category_priority(category: str) -> int:
+    """Get priority for therapy reflection question categories."""
+    priorities = {
+        "action_items": 1,      # Highest priority - immediate implementation
+        "daily_practice": 2,    # Medium priority - daily integration
+        "deep_reflection": 3    # Lower priority - longer term processing
+    }
+    return priorities.get(category, 2)
+
+
 async def generate_therapy_reflection_question(
     tool_context: ToolContext,
 ) -> str:
-    """Tool to generate empowering therapy reflection question."""
-    
-    try:
-        summary = tool_context.state["therapy_session"]["summary"]
-        
-        prompt = get_therapy_reflection_question_prompt()
-        full_prompt = prompt.format(summary=json.dumps(summary))
-        
-        model = get_gemini_model()
-        response = model.generate_content(full_prompt)
-        reflection_question = response.text.strip()
-        
-        # Store in context
-        tool_context.state["therapy_session"]["reflection_question"] = reflection_question
-        
-        return f"Empowering therapy reflection question generated: {reflection_question}"
-        
-    except Exception as e:
-        return f"Error generating therapy reflection question: {str(e)}"
+    """
+    Backward compatibility wrapper - redirects to enhanced reflection system.
+    """
+    return await generate_therapy_reflection_questions(tool_context)
 
 
 async def store_therapy_session(
@@ -233,19 +311,47 @@ async def store_therapy_session(
             
             db.collection("users").document(user_id).collection("therapyNotes").document(note_id).set(note_doc)
         
-        # Store reflection question as recommendation
-        recommendation_doc = {
-            "type": "reflection_question",
-            "content": therapy_session["reflection_question"],
-            "category": "Reflection",
-            "source": "therapy",
-            "priority": 4,
-            "status": "pending",
-            "createdAt": datetime.now(),
-            "expiresAt": datetime.now().replace(hour=23, minute=59, second=59)
-        }
+        # Store enhanced reflection questions if available (Phase 3)
+        if "reflection_questions" in therapy_session:
+            reflection_questions = therapy_session["reflection_questions"]
+            
+            for category, questions in reflection_questions.items():
+                category_key = category.value if hasattr(category, 'value') else str(category)
+                
+                for question in questions:
+                    recommendation_doc = {
+                        "type": "reflection_question",
+                        "category": category_key,
+                        "reflectionType": question.reflection_type.value,
+                        "content": question.question,
+                        "questionId": question.question_id,
+                        "difficulty": question.metadata["difficulty"],
+                        "estimatedTime": question.metadata["estimatedTime"],
+                        "source": "therapy",
+                        "sourceId": session_id,
+                        "priority": _get_therapy_category_priority(category_key),
+                        "status": "pending",
+                        "createdAt": datetime.now(),
+                        "scheduledFor": question.delivery["scheduledFor"],
+                        "expiresAt": question.delivery["expiresAt"]
+                    }
+                    
+                    db.collection("users").document(user_id).collection("reflectionQuestions").add(recommendation_doc)
         
-        db.collection("users").document(user_id).collection("recommendations").add(recommendation_doc)
+        # Backward compatibility: Store single reflection question if available
+        elif "reflection_question" in therapy_session:
+            recommendation_doc = {
+                "type": "reflection_question",
+                "content": therapy_session["reflection_question"],
+                "category": "Reflection",
+                "source": "therapy",
+                "priority": 4,
+                "status": "pending",
+                "createdAt": datetime.now(),
+                "expiresAt": datetime.now().replace(hour=23, minute=59, second=59)
+            }
+            
+            db.collection("users").document(user_id).collection("recommendations").add(recommendation_doc)
         
         tool_context.state["session_id"] = session_id
         

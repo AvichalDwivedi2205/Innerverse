@@ -294,64 +294,147 @@ async def generate_journal_insights(
         )
 
 
-async def generate_reflection_question(
+async def generate_multiple_reflection_questions(
     tool_context: ToolContext,
 ) -> JournalingToolResult:
-    """Tool to generate empowering reflection question."""
+    """
+    Phase 3: Generate complete set of 5 categorized reflection questions.
+    Replaces single reflection question generation with enhanced system.
+    Always generates: 2 daily + 2 deep + 1 action = 5 questions total.
+    """
     
     try:
+        # Import enhanced reflection generator
+        from ..common.reflection_generator import EnhancedReflectionGenerator
+        
+        # Get session data
         standardized_entry = tool_context.state["journal_session"]["standardized_entry"]
         insights = tool_context.state["journal_session"]["insights"]
         
-        entry_with_insights = {
+        # Initialize enhanced reflection generator
+        reflection_generator = EnhancedReflectionGenerator()
+        
+        # Prepare context data
+        session_data = {
             "entry": standardized_entry,
-            "insights": insights
+            "raw_text": tool_context.state["journal_session"].get("raw_text", ""),
+            "challenges": insights.get("triggers", []),
+            "emotions": [insights.get("emotion", "mixed emotions")],
+            "topics": insights.get("themes", ["personal growth"])
         }
         
-        prompt = get_reflection_question_prompt()
-        full_prompt = prompt.format(entry_with_insights=json.dumps(entry_with_insights))
+        user_context = {
+            "preferences": ["empowerment", "self-reflection"],
+            "source": "journaling"
+        }
         
-        response = get_gemini_model().generate_content(full_prompt)
-        reflection_question = response.text.strip()
+        # Generate complete question set (2 daily + 2 deep + 1 action = 5 questions)
+        question_set = await reflection_generator.generate_complete_question_set(
+            session_data=session_data,
+            insights=insights,
+            user_context=user_context,
+            source_type="journaling"
+        )
+        
+        # Get question summary
+        summary = reflection_generator.get_question_summary(question_set)
         
         # Store in context
-        tool_context.state["journal_session"]["reflection_question"] = reflection_question
+        tool_context.state["journal_session"]["reflection_questions"] = question_set
+        tool_context.state["journal_session"]["reflection_summary"] = summary
+        
+        # Prepare data for response
+        questions_data = {}
+        for category, questions in question_set.items():
+            questions_data[category.value] = [
+                {
+                    "question_id": q.question_id,
+                    "question": q.question,
+                    "type": q.reflection_type.value,
+                    "difficulty": q.metadata["difficulty"],
+                    "estimated_time": q.metadata["estimatedTime"],
+                    "scheduled_for": q.delivery["scheduledFor"].isoformat()
+                }
+                for q in questions
+            ]
         
         return JournalingToolResult.success_result(
-            data={"reflection_question": reflection_question},
-            message="Empowering reflection question generated",
-            next_actions=["store_journal_entry"]
+            data={
+                "reflection_questions": questions_data,
+                "summary": summary,
+                "total_questions": summary["total_questions"]
+            },
+            message=f"Generated {summary['total_questions']} categorized reflection questions: "
+                   f"{summary['category_breakdown']['daily_practice']} daily, "
+                   f"{summary['category_breakdown']['deep_reflection']} deep, "
+                   f"{summary['category_breakdown']['action_items']} action",
+            next_actions=["store_journal_entry_with_enhanced_questions"]
         )
         
     except Exception as e:
         return JournalingToolResult.error_result(
-            message="Error generating reflection question",
+            message="Error generating enhanced reflection questions",
             error_details=str(e),
             next_actions=["retry_reflection_generation", "check_insights"]
         )
 
 
-async def store_journal_entry(
+async def generate_reflection_question(
+    tool_context: ToolContext,
+) -> JournalingToolResult:
+    """
+    Backward compatibility wrapper - redirects to enhanced reflection system.
+    """
+    return await generate_multiple_reflection_questions(tool_context)
+
+
+async def store_journal_entry_with_enhanced_questions(
     tool_context: ToolContext,
 ) -> str:
-    """Tool to store journal entry in Firebase Firestore."""
+    """Phase 3: Store journal entry with enhanced reflection questions."""
     
     try:
         user_id = tool_context.state.get("user_id", "anonymous_user")
         journal_session = tool_context.state["journal_session"]
         journal_id = str(uuid.uuid4())
         
-        # Prepare journal document
+        # Prepare enhanced journal document
         journal_doc = {
             "date": datetime.now().isoformat(),
             "rawText": journal_session.get("raw_text", ""),
             "standardizedEntry": journal_session.get("standardized_entry", {}),
             "insights": journal_session.get("insights", {}),
-            "reflectionQuestion": journal_session.get("reflection_question", ""),
+            # Phase 3: Store categorized reflection questions
+            "reflectionQuestions": {},
+            "reflectionSummary": journal_session.get("reflection_summary", {}),
             "embeddingId": "",  # Will be set after embedding generation
             "createdAt": datetime.now().isoformat(),
-            "updatedAt": datetime.now().isoformat()
+            "updatedAt": datetime.now().isoformat(),
+            "phase": 3  # Mark as Phase 3 enhanced
         }
+        
+        # Convert reflection questions to storable format
+        reflection_questions = journal_session.get("reflection_questions", {})
+        for category, questions in reflection_questions.items():
+            category_key = category.value if hasattr(category, 'value') else str(category)
+            journal_doc["reflectionQuestions"][category_key] = [
+                {
+                    "questionId": q.question_id,
+                    "question": q.question,
+                    "category": q.category.value,
+                    "type": q.reflection_type.value,
+                    "context": q.context,
+                    "delivery": {
+                        "createdAt": q.delivery["createdAt"].isoformat(),
+                        "scheduledFor": q.delivery["scheduledFor"].isoformat(),
+                        "deliveredAt": None,
+                        "completedAt": None,
+                        "expiresAt": q.delivery["expiresAt"].isoformat()
+                    },
+                    "metadata": q.metadata
+                }
+                for q in questions
+            ]
         
         # Store in Firestore
         db_client = get_firestore_client()
@@ -376,28 +459,61 @@ async def store_journal_entry(
         except Exception as e:
             print(f"⚠️  Embedding generation failed (non-critical): {e}")
         
-        # Store reflection question as recommendation
+        # Store each reflection question as individual recommendation with category
         try:
-            recommendation_doc = {
-                "type": "reflection_question",
-                "content": journal_session.get("reflection_question", ""),
-                "category": "Reflection",
-                "source": "journal",
-                "priority": 3,
-                "status": "pending",
-                "createdAt": datetime.now().isoformat(),
-                "expiresAt": datetime.now().replace(hour=23, minute=59, second=59).isoformat()
-            }
-            
-            db_client.collection("users").document(user_id).collection("recommendations").add(recommendation_doc)
+            for category, questions in reflection_questions.items():
+                category_key = category.value if hasattr(category, 'value') else str(category)
+                
+                for question in questions:
+                    recommendation_doc = {
+                        "type": "reflection_question",
+                        "category": category_key,
+                        "reflectionType": question.reflection_type.value,
+                        "content": question.question,
+                        "questionId": question.question_id,
+                        "difficulty": question.metadata["difficulty"],
+                        "estimatedTime": question.metadata["estimatedTime"],
+                        "source": "journal",
+                        "sourceId": journal_id,
+                        "priority": _get_category_priority(category_key),
+                        "status": "pending",
+                        "createdAt": datetime.now().isoformat(),
+                        "scheduledFor": question.delivery["scheduledFor"].isoformat(),
+                        "expiresAt": question.delivery["expiresAt"].isoformat()
+                    }
+                    
+                    db_client.collection("users").document(user_id).collection("reflectionQuestions").add(recommendation_doc)
+                    
         except Exception as e:
-            print(f"⚠️  Recommendation storage failed (non-critical): {e}")
+            print(f"⚠️  Enhanced reflection questions storage failed (non-critical): {e}")
         
         tool_context.state["journal_id"] = journal_id
-        return f"✅ Journal entry stored in Firebase with ID: {journal_id}"
+        
+        # Get summary for response
+        summary = journal_session.get("reflection_summary", {})
+        total_questions = summary.get("total_questions", 0)
+        
+        return f"✅ Journal entry stored with {total_questions} enhanced reflection questions (ID: {journal_id})"
         
     except Exception as e:
-        return f"❌ Error storing journal entry: {str(e)}"
+        return f"❌ Error storing enhanced journal entry: {str(e)}"
+
+
+def _get_category_priority(category: str) -> int:
+    """Get priority for reflection question categories."""
+    priorities = {
+        "action_items": 1,      # Highest priority
+        "daily_practice": 2,    # Medium priority
+        "deep_reflection": 3    # Lower priority (longer term)
+    }
+    return priorities.get(category, 2)
+
+
+async def store_journal_entry(
+    tool_context: ToolContext,
+) -> str:
+    """Backward compatibility wrapper - redirects to enhanced storage."""
+    return await store_journal_entry_with_enhanced_questions(tool_context)
 
 
 async def update_consistency_tracking(
