@@ -465,23 +465,23 @@ async def store_journal_entry_with_enhanced_questions(
                 category_key = category.value if hasattr(category, 'value') else str(category)
                 
                 for question in questions:
-                    recommendation_doc = {
-                        "type": "reflection_question",
+            recommendation_doc = {
+                "type": "reflection_question",
                         "category": category_key,
                         "reflectionType": question.reflection_type.value,
                         "content": question.question,
                         "questionId": question.question_id,
                         "difficulty": question.metadata["difficulty"],
                         "estimatedTime": question.metadata["estimatedTime"],
-                        "source": "journal",
+                "source": "journal",
                         "sourceId": journal_id,
                         "priority": _get_category_priority(category_key),
-                        "status": "pending",
-                        "createdAt": datetime.now().isoformat(),
+                "status": "pending",
+                "createdAt": datetime.now().isoformat(),
                         "scheduledFor": question.delivery["scheduledFor"].isoformat(),
                         "expiresAt": question.delivery["expiresAt"].isoformat()
-                    }
-                    
+            }
+            
                     db_client.collection("users").document(user_id).collection("reflectionQuestions").add(recommendation_doc)
                     
         except Exception as e:

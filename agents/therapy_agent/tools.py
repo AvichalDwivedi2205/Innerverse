@@ -340,18 +340,18 @@ async def store_therapy_session(
         
         # Backward compatibility: Store single reflection question if available
         elif "reflection_question" in therapy_session:
-            recommendation_doc = {
-                "type": "reflection_question",
-                "content": therapy_session["reflection_question"],
-                "category": "Reflection",
-                "source": "therapy",
-                "priority": 4,
-                "status": "pending",
-                "createdAt": datetime.now(),
-                "expiresAt": datetime.now().replace(hour=23, minute=59, second=59)
-            }
-            
-            db.collection("users").document(user_id).collection("recommendations").add(recommendation_doc)
+        recommendation_doc = {
+            "type": "reflection_question",
+            "content": therapy_session["reflection_question"],
+            "category": "Reflection",
+            "source": "therapy",
+            "priority": 4,
+            "status": "pending",
+            "createdAt": datetime.now(),
+            "expiresAt": datetime.now().replace(hour=23, minute=59, second=59)
+        }
+        
+        db.collection("users").document(user_id).collection("recommendations").add(recommendation_doc)
         
         tool_context.state["session_id"] = session_id
         
