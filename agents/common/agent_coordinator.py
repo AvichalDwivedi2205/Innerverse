@@ -65,12 +65,82 @@ class AgentCoordinator:
                     "action": "generate_insights",
                     "required_data": ["user_id"]
                 }
+            ],
+            "schedule_wellness_routine": [
+                {
+                    "agent": "mental_orchestrator_agent",
+                    "action": "suggest_wellness_schedule",
+                    "required_data": ["user_id", "wellness_goals"]
+                },
+                {
+                    "agent": "scheduling_agent",
+                    "action": "create_wellness_events",
+                    "required_data": ["user_id", "suggested_schedule"]
+                }
             ]
         }
     
     def register_agent(self, name: str, agent: Agent):
         """Register an agent for coordination."""
         self.agent_registry[name] = agent
+    
+    def determine_agent_for_request(self, user_message: str) -> str:
+        """Determine which agent should handle a user request.
+        
+        Args:
+            user_message: The user's message/request
+            
+        Returns:
+            Agent name that should handle the request
+        """
+        message_lower = user_message.lower()
+        
+        # Scheduling agent keywords
+        scheduling_keywords = [
+            'schedule', 'calendar', 'appointment', 'meeting', 'book', 'add event',
+            'reschedule', 'cancel', 'delete event', 'when is', 'what time',
+            'every day', 'every week', 'daily', 'weekly', 'monthly',
+            'therapy session', 'workout', 'exercise', 'journaling time'
+        ]
+        
+        # Therapy agent keywords
+        therapy_keywords = [
+            'therapy', 'counseling', 'feeling', 'anxious', 'depressed', 'stressed',
+            'talk about', 'help me with', 'struggling', 'mental health',
+            'emotions', 'thoughts', 'mood', 'coping'
+        ]
+        
+        # Journaling agent keywords
+        journaling_keywords = [
+            'journal', 'write', 'reflect', 'thoughts', 'today was',
+            'feeling grateful', 'reflection', 'diary', 'log'
+        ]
+        
+        # Mental orchestrator keywords
+        orchestrator_keywords = [
+            'insight', 'pattern', 'analysis', 'overview', 'summary',
+            'progress', 'trends', 'mind map', 'suggestions', 'recommendations'
+        ]
+        
+        # Check for scheduling keywords first (highest priority for scheduling)
+        if any(keyword in message_lower for keyword in scheduling_keywords):
+            return 'scheduling_agent'
+        
+        # Check for therapy keywords
+        elif any(keyword in message_lower for keyword in therapy_keywords):
+            return 'therapy_agent'
+        
+        # Check for journaling keywords
+        elif any(keyword in message_lower for keyword in journaling_keywords):
+            return 'journaling_agent'
+        
+        # Check for mental orchestrator keywords
+        elif any(keyword in message_lower for keyword in orchestrator_keywords):
+            return 'mental_orchestrator_agent'
+        
+        # Default to mental orchestrator for general queries
+        else:
+            return 'mental_orchestrator_agent'
     
     async def coordinate_workflow(
         self, 
