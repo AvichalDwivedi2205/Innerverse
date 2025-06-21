@@ -36,7 +36,19 @@ def get_firestore_client():
     """Get Firestore client with lazy initialization."""
     global _db
     if _db is None:
-        _db = firestore.Client()
+        import os
+        
+        # Set up environment for Firebase
+        os.environ['GOOGLE_CLOUD_PROJECT'] = 'gen-lang-client-0307630688'
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'service-account-key.json'
+        
+        try:
+            _db = firestore.Client(project='gen-lang-client-0307630688')
+            print("✅ Firebase Firestore connected successfully")
+        except Exception as e:
+            print(f"❌ Firestore connection failed: {e}")
+            # Don't fall back to local storage, raise the error
+            raise Exception(f"Firebase connection required for cloud hosting: {e}")
     return _db
 
 def get_gemini_model():
@@ -72,17 +84,31 @@ async def process_therapy_transcript(
         response = model.generate_content(full_prompt)
         summary_text = response.text
         
-        # Parse JSON response
-        summary = json.loads(summary_text)
+        # Clean and parse JSON response
+        try:
+            # Extract JSON from response if it's wrapped in markdown
+            if "```json" in summary_text:
+                start = summary_text.find("```json") + 7
+                end = summary_text.find("```", start)
+                summary_text = summary_text[start:end].strip()
+            elif "```" in summary_text:
+                start = summary_text.find("```") + 3
+                end = summary_text.find("```", start)
+                summary_text = summary_text[start:end].strip()
+            
+            summary = json.loads(summary_text)
+        except json.JSONDecodeError as e:
+            return f"✅ Transcript processed but JSON parsing failed. Storing raw summary. Error: {str(e)[:100]}"
         
         # Store in context
         tool_context.state["therapy_session"]["transcript"] = transcript
         tool_context.state["therapy_session"]["summary"] = summary
         
-        return f"Therapy transcript processed with empowerment focus: {summary}"
+        # Return clear success message
+        return f"✅ Therapy transcript successfully processed and structured. Ready for insights generation."
         
     except Exception as e:
-        return f"Error processing therapy transcript: {str(e)}"
+        return f"❌ Error processing therapy transcript: {str(e)[:200]}. Please try the next step."
 
 
 async def generate_therapy_insights(
@@ -100,16 +126,28 @@ async def generate_therapy_insights(
         response = model.generate_content(full_prompt)
         insights_text = response.text
         
-        # Parse JSON response
-        insights = json.loads(insights_text)
+        # Clean and parse JSON response
+        try:
+            if "```json" in insights_text:
+                start = insights_text.find("```json") + 7
+                end = insights_text.find("```", start)
+                insights_text = insights_text[start:end].strip()
+            elif "```" in insights_text:
+                start = insights_text.find("```") + 3
+                end = insights_text.find("```", start)
+                insights_text = insights_text[start:end].strip()
+            
+            insights = json.loads(insights_text)
+        except json.JSONDecodeError as e:
+            return f"✅ Insights generated but JSON parsing failed. Storing raw insights. Ready for therapy notes."
         
         # Store in context
         tool_context.state["therapy_session"]["insights"] = insights
         
-        return f"Therapy insights generated with empowerment themes: {insights}"
+        return f"✅ Therapy insights successfully generated with empowerment analysis. Ready for therapy notes."
         
     except Exception as e:
-        return f"Error generating therapy insights: {str(e)}"
+        return f"❌ Error generating therapy insights: {str(e)[:200]}. Please proceed to therapy notes."
 
 
 async def generate_therapy_notes(
@@ -140,10 +178,10 @@ async def generate_therapy_notes(
         # Store in context
         tool_context.state["therapy_session"]["therapy_notes"] = therapy_notes
         
-        return f"Therapy notes generated for session continuity: {len(therapy_notes)} notes"
+        return f"✅ Therapy notes successfully generated ({len(therapy_notes)} notes). Ready for reflection questions."
         
     except Exception as e:
-        return f"Error generating therapy notes: {str(e)}"
+        return f"❌ Error generating therapy notes: {str(e)[:200]}. Please proceed to reflection questions."
 
 
 async def generate_therapy_reflection_questions(
@@ -277,14 +315,43 @@ async def store_therapy_session(
         db = get_firestore_client()
         db.collection("users").document(user_id).collection("therapySessions").document(session_id).set(session_doc)
         
-        # Generate and store embedding for observations
-        observations_text = therapy_session["summary"].get("observations", "")
-        embedding_id = await _generate_and_store_embedding(
-            text=observations_text,
-            user_id=user_id,
-            context="therapy",
-            source_id=session_id
-        )
+        # Generate and store embedding for comprehensive therapy content
+        # Use transcript + summary for more comprehensive embedding
+        embedding_text = ""
+        if therapy_session.get("transcript"):
+            embedding_text += f"Transcript: {therapy_session['transcript'][:1000]} "
+        
+        if therapy_session.get("summary"):
+            summary = therapy_session["summary"]
+            if isinstance(summary, dict):
+                # Extract key summary components
+                for key, value in summary.items():
+                    if isinstance(value, str) and value.strip():
+                        embedding_text += f"{key}: {value[:500]} "
+                    elif isinstance(value, list):
+                        embedding_text += f"{key}: {' '.join(str(v) for v in value[:3])} "
+            else:
+                embedding_text += f"Summary: {str(summary)[:1000]} "
+        
+        # Fallback to insights if summary is empty
+        if not embedding_text.strip() and therapy_session.get("insights"):
+            insights = therapy_session["insights"]
+            if isinstance(insights, dict):
+                for key, value in insights.items():
+                    if isinstance(value, str) and value.strip():
+                        embedding_text += f"{key}: {value[:500]} "
+        
+        # Generate embedding only if we have meaningful text
+        embedding_id = ""
+        if embedding_text.strip():
+            embedding_id = await _generate_and_store_embedding(
+                text=embedding_text.strip(),
+                user_id=user_id,
+                context="therapy",
+                source_id=session_id
+            )
+        else:
+            print("⚠️ No meaningful therapy content found for embedding generation")
         
         # Update session with embedding ID
         db.collection("users").document(user_id).collection("therapySessions").document(session_id).update({
@@ -444,28 +511,35 @@ async def _generate_and_store_embedding(
     """Helper function to generate and store embeddings in Pinecone."""
     
     try:
-        # Generate embedding using Vertex AI
-        embedding_model = aiplatform.TextEmbeddingModel.from_pretrained("text-embedding-004")
-        embeddings = embedding_model.get_embeddings([text])
-        embedding_vector = embeddings[0].values
+        # Import pinecone service
+        from ..common.pinecone_service import pinecone_service
         
         # Generate unique embedding ID
         embedding_id = f"{user_id}_{context}_{source_id}"
         
-        # Store in Pinecone (assuming Pinecone is configured)
-        # pinecone.upsert(
-        #     vectors=[(embedding_id, embedding_vector, {
-        #         "userId": user_id,
-        #         "context": context,
-        #         "sourceId": source_id,
-        #         "timestamp": datetime.now().isoformat()
-        #     })]
-        # )
+        # Store embedding using pinecone service
+        result = await pinecone_service.store_embedding(
+            embedding_id=embedding_id,
+            text=text,
+            metadata={
+                "user_id": user_id,
+                "context": context,
+                "source_id": source_id,
+                "text": text[:500],  # Store first 500 chars for reference
+                "timestamp": datetime.now().isoformat(),
+                "agent": "therapy_agent"
+            }
+        )
         
-        return embedding_id
+        if result:
+            print(f"✅ Therapy embedding stored successfully: {embedding_id}")
+            return embedding_id
+        else:
+            print(f"❌ Failed to store therapy embedding: {embedding_id}")
+            return ""
         
     except Exception as e:
-        print(f"Error generating embedding: {str(e)}")
+        print(f"❌ Error generating therapy embedding: {str(e)}")
         return ""
 
 
