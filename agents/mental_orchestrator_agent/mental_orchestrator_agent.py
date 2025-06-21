@@ -13,17 +13,32 @@ from google.genai import types
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
 
-from agents.mental_orchestrator_agent.prompts import return_instructions_orchestrator
-from agents.mental_orchestrator_agent.tools import (
-    retrieve_user_embeddings,
-    cluster_internal_patterns,
-    build_mental_mind_map,
-    generate_empowerment_insights,
-    recommend_awareness_exercises,
-    calculate_dashboard_metrics,
-    detect_crisis_with_empowerment,
-    store_orchestrator_results
-)
+try:
+    # Try relative imports first (when loaded as part of package)
+    from .prompts import return_instructions_orchestrator
+    from .tools import (
+        retrieve_user_embeddings,
+        cluster_internal_patterns,
+        build_mental_mind_map,
+        generate_empowerment_insights,
+        recommend_awareness_exercises,
+        calculate_dashboard_metrics,
+        detect_crisis_with_empowerment,
+        store_orchestrator_results
+    )
+except ImportError:
+    # Fall back to absolute imports (when loaded directly by ADK)
+    from agents.mental_orchestrator_agent.prompts import return_instructions_orchestrator
+    from agents.mental_orchestrator_agent.tools import (
+        retrieve_user_embeddings,
+        cluster_internal_patterns,
+        build_mental_mind_map,
+        generate_empowerment_insights,
+        recommend_awareness_exercises,
+        calculate_dashboard_metrics,
+        detect_crisis_with_empowerment,
+        store_orchestrator_results
+    )
 
 date_today = date.today()
 

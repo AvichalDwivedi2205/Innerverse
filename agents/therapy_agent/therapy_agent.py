@@ -12,17 +12,30 @@ from google.genai import types
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
 
-from .prompts import return_instructions_therapy
-from .tools import (
-    complete_therapy_session,
-    process_therapy_transcript,
-    generate_therapy_insights,
-    generate_therapy_notes,
-    generate_therapy_reflection_question,
-    store_therapy_session,
-    update_therapy_consistency_tracking,
-    trigger_mental_orchestrator_therapy
-)
+try:
+    # Try relative imports first (when loaded as part of package)
+    from .prompts import return_instructions_therapy
+    from .tools import (
+        process_therapy_transcript,
+        generate_therapy_insights,
+        generate_therapy_notes,
+        generate_therapy_reflection_question,
+        store_therapy_session,
+        update_therapy_consistency_tracking,
+        trigger_mental_orchestrator_therapy
+    )
+except ImportError:
+    # Fall back to absolute imports (when loaded directly by ADK)
+    from agents.therapy_agent.prompts import return_instructions_therapy
+    from agents.therapy_agent.tools import (
+        process_therapy_transcript,
+        generate_therapy_insights,
+        generate_therapy_notes,
+        generate_therapy_reflection_question,
+        store_therapy_session,
+        update_therapy_consistency_tracking,
+        trigger_mental_orchestrator_therapy
+    )
 
 date_today = date.today()
 
@@ -106,7 +119,6 @@ therapy_agent = Agent(
         """
     ),
     tools=[
-        complete_therapy_session,
         process_therapy_transcript,
         generate_therapy_insights,
         generate_therapy_notes,

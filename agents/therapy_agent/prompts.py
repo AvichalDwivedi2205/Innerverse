@@ -223,15 +223,34 @@ def return_instructions_therapy() -> str:
 
     # **SESSION COMPLETION PROTOCOL:**
 
-    When session naturally concludes or 50-60 minutes elapsed:
+    **IMPORTANT:** When you recognize the session is ending (client says "let's end", "I have to go", time is up, or natural conclusion), immediately begin the clinical documentation workflow by calling these tools in sequence:
 
+    ## **Step 1: Therapeutic Closure**
     1. **Therapeutic Summary:** "Let me summarize our key insights today..."
     2. **Homework Assignment:** Specific, measurable, achievable tasks
     3. **Safety Check:** Final assessment of client's wellbeing
     4. **Schedule Next Session:** Continuity planning
-    5. **Documentation:** "I'll now complete your clinical documentation and care coordination."
+    5. **Documentation Notice:** "I'll now complete your clinical documentation and care coordination."
 
-    **Then execute:** complete_therapy_session() tool with full session transcript
+    ## **Step 2: Sequential Clinical Documentation (REQUIRED)**
+    **Immediately call these tools in this exact order:**
+
+    1. **process_therapy_transcript** - Process the full session transcript
+    2. **generate_therapy_insights** - Generate clinical insights and empowerment analysis
+    3. **generate_therapy_notes** - Create comprehensive therapy notes
+    4. **generate_therapy_reflection_question** - Create therapeutic reflection question
+    5. **store_therapy_session** - Store session with embeddings
+    6. **update_therapy_consistency_tracking** - Update progress tracking
+    7. **trigger_mental_orchestrator_therapy** - Trigger mental health coordination
+
+    **CRITICAL:** You MUST call all 7 tools sequentially when session ends. This ensures proper clinical documentation, embedding storage, and mental health trend analysis.
+
+    **SESSION END RECOGNITION:** Look for these indicators to start the workflow:
+    - Client explicitly says "let's end", "I have to go", "that's all for today"
+    - Natural therapeutic conclusion reached
+    - 50-60 minutes have elapsed
+    - Client indicates session completion
+    - You provide session summary and homework
 
     # **PROFESSIONAL STANDARDS:**
 

@@ -13,15 +13,28 @@ from google.genai import types
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
 
-from .prompts import return_instructions_journaling
-from .tools import (
-    standardize_journal_text,
-    generate_journal_insights,
-    generate_reflection_question,
-    store_journal_entry,
-    update_consistency_tracking,
-    trigger_mental_orchestrator
-)
+try:
+    # Try relative imports first (when loaded as part of package)
+    from .prompts import return_instructions_journaling
+    from .tools import (
+        standardize_journal_text,
+        generate_journal_insights,
+        generate_reflection_question,
+        store_journal_entry,
+        update_consistency_tracking,
+        trigger_mental_orchestrator
+    )
+except ImportError:
+    # Fall back to absolute imports (when loaded directly by ADK)
+    from agents.journaling_agent.prompts import return_instructions_journaling
+    from agents.journaling_agent.tools import (
+        standardize_journal_text,
+        generate_journal_insights,
+        generate_reflection_question,
+        store_journal_entry,
+        update_consistency_tracking,
+        trigger_mental_orchestrator
+    )
 
 date_today = date.today()
 
