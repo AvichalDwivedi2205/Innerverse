@@ -57,7 +57,7 @@ GOOGLE_CALENDAR_ID=primary
 ```
 
 ### 2.2 Verify Existing Configuration
-Your `.env` already has these OAuth settings which are compatible:
+Your `.env` should have these OAuth settings:
 ```bash
 GOOGLE_CLIENT_ID=your_client_id_here
 GOOGLE_CLIENT_SECRET=your_client_secret_here

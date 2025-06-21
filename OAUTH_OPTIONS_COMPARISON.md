@@ -95,7 +95,7 @@ If you need **true multi-user calendar access** (each user accesses their own ca
 
 ## For Your Use Case
 
-Based on your `.env` file, you already have OAuth credentials configured:
+You should have OAuth credentials configured in your `.env` file like:
 ```bash
 GOOGLE_CLIENT_ID=your_client_id_here
 GOOGLE_CLIENT_SECRET=your_client_secret_here
