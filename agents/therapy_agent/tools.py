@@ -26,6 +26,7 @@ from .prompts import (
 
 # Phase 2: Import enhanced session timer
 from ..common.session_timer import EnhancedSessionTimer, SessionType, TimerToolResult
+from ..common import coordinator
 
 # Initialize clients lazily to avoid import-time errors
 _db = None

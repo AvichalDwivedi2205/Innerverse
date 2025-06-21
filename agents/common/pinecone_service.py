@@ -38,12 +38,14 @@ class PineconeService:
         """Initialize Pinecone connection."""
         try:
             api_key = os.getenv("PINECONE_API_KEY")
-            index_name = os.getenv("PINECONE_INDEX_NAME", "innerverse-embeddings")
+            index_name = os.getenv("PINECONE_INDEX_NAME", "innerverse")
             
             if not api_key or not PINECONE_AVAILABLE:
                 if not api_key:
+                    print("⚠️  Pinecone API key not found. Vector operations will be simulated.")
                     logger.warning("Pinecone API key not found. Vector operations will be simulated.")
                 else:
+                    print("⚠️  Pinecone package not available. Vector operations will be simulated.")
                     logger.warning("Pinecone package not available. Vector operations will be simulated.")
                 return
             
@@ -89,10 +91,22 @@ class PineconeService:
     def _initialize_embedding_model(self):
         """Initialize Vertex AI embedding model."""
         try:
-            vertexai.init()
+            # Ensure environment variables are set for Vertex AI
+            project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("VERTEX_AI_PROJECT")
+            location = os.getenv("GOOGLE_CLOUD_REGION") or os.getenv("VERTEX_AI_LOCATION", "us-central1")
+            
+            if not project_id:
+                print("⚠️  Google Cloud project not found. Using fallback embedding generation.")
+                logger.warning("Google Cloud project not found. Using fallback embedding generation.")
+                self.embedding_model = None
+                return
+                
+            vertexai.init(project=project_id, location=location)
             self.embedding_model = TextEmbeddingModel.from_pretrained("text-embedding-004")
+            print("✅ Vertex AI embedding model initialized")
             logger.info("Vertex AI embedding model initialized")
         except Exception as e:
+            print(f"⚠️  Failed to initialize embedding model: {str(e)}")
             logger.error(f"Failed to initialize embedding model: {str(e)}")
             self.embedding_model = None
     
