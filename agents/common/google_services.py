@@ -50,7 +50,7 @@ class MockGoogleServices:
 class GoogleServicesHub:
     """Centralized hub for all Google Cloud services with hybrid mock/real implementation."""
     
-    def __init__(self, use_mock: bool = True):
+    def __init__(self, use_mock: bool = False):
         """Initialize the Google Services Hub.
         
         Args:

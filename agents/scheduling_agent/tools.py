@@ -5,16 +5,24 @@ CRUD operations, bulk operations, and intelligent conflict resolution.
 """
 
 import uuid
+import json
 import logging
+import sys
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
+# Ensure the workspace root is in Python path for proper imports
+workspace_root = Path(__file__).parent.parent.parent
+if str(workspace_root) not in sys.path:
+    sys.path.insert(0, str(workspace_root))
+
 from google.cloud import firestore
-from ..common.tool_results import SchedulingToolResult
-from ..common.google_services import google_services
-from .event_parser import EventParser
-from .conflict_resolver import ConflictResolver
-from .recurring_events import RecurringEventsHandler
+from agents.common.tool_results import SchedulingToolResult
+from agents.common.google_services import google_services
+from agents.scheduling_agent.event_parser import EventParser
+from agents.scheduling_agent.conflict_resolver import ConflictResolver
+from agents.scheduling_agent.recurring_events import RecurringEventsHandler
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +69,7 @@ class SchedulingTools:
 async def create_event(
     user_id: str,
     title: str,
-    event_datetime: datetime,
+    event_datetime: str,
     duration: int,
     event_type: str,
     description: str = ""
@@ -72,7 +80,7 @@ async def create_event(
     Args:
         user_id: User identifier
         title: Event title
-        event_datetime: When the event starts
+        event_datetime: When the event starts (ISO format string: YYYY-MM-DD HH:MM:SS or YYYY-MM-DDTHH:MM:SS)
         duration: Duration in minutes
         event_type: Type of event (therapy, exercise, personal, etc.)
         description: Optional event description
@@ -83,10 +91,25 @@ async def create_event(
     try:
         tools = SchedulingTools()
         
+        # Parse datetime string to datetime object
+        try:
+            # Handle different datetime string formats
+            if 'T' in event_datetime:
+                # ISO format with T separator
+                parsed_datetime = datetime.fromisoformat(event_datetime.replace('Z', '+00:00'))
+            else:
+                # Format: YYYY-MM-DD HH:MM:SS
+                parsed_datetime = datetime.strptime(event_datetime, '%Y-%m-%d %H:%M:%S')
+        except ValueError as e:
+            return SchedulingToolResult.error_result(
+                message="Invalid datetime format",
+                error_details=f"Please use format 'YYYY-MM-DD HH:MM:SS' or ISO format. Error: {str(e)}"
+            )
+        
         # Create event data
         event_data = {
             'title': title,
-            'datetime': event_datetime,
+            'datetime': parsed_datetime,
             'duration': duration,
             'event_type': event_type,
             'description': description
@@ -107,13 +130,13 @@ async def create_event(
         
         # No conflicts, create the event
         schedule_id = str(uuid.uuid4())
-        end_time = event_datetime + timedelta(minutes=duration)
+        end_time = parsed_datetime + timedelta(minutes=duration)
         
         # Create Google Calendar event
         google_event_details = {
             "title": title,
             "description": description,
-            "start_time": event_datetime,
+            "start_time": parsed_datetime,
             "end_time": end_time
         }
         
@@ -130,7 +153,7 @@ async def create_event(
             "type": event_type,
             "category": category,
             "googleEventId": google_event_id,
-            "scheduledTime": event_datetime,
+            "scheduledTime": parsed_datetime,
             "endTime": end_time,
             "durationMinutes": duration,
             "frequency": "once",
@@ -149,9 +172,9 @@ async def create_event(
                 "google_event_id": google_event_id,
                 "event_details": schedule_doc
             },
-            message=f"Successfully scheduled '{title}' for {event_datetime.strftime('%Y-%m-%d %H:%M')}",
+            message=f"Successfully scheduled '{title}' for {parsed_datetime.strftime('%Y-%m-%d %H:%M')}",
             google_event_id=google_event_id,
-            scheduled_time=event_datetime,
+            scheduled_time=parsed_datetime,
             schedule_category=category,
             frequency="once",
             next_actions=["view_calendar", "set_reminders"]
@@ -167,7 +190,7 @@ async def create_event(
 
 async def read_events(
     user_id: str,
-    date_range: Optional[Dict] = None,
+    date_range: str = "",
     event_type: Optional[str] = None
 ) -> SchedulingToolResult:
     """
@@ -175,7 +198,7 @@ async def read_events(
     
     Args:
         user_id: User identifier
-        date_range: Optional date range filter
+        date_range: Optional date range filter as JSON string (e.g., '{"start_date": "2024-01-01", "end_date": "2024-01-31"}')
         event_type: Optional event type filter
         
     Returns:
@@ -183,7 +206,24 @@ async def read_events(
     """
     try:
         tools = SchedulingTools()
-        events = await tools.get_user_calendar(user_id, date_range)
+        
+        # Parse date_range string to dict if provided
+        parsed_date_range = None
+        if date_range and date_range.strip():
+            try:
+                parsed_date_range = json.loads(date_range)
+                # Convert string dates to datetime objects if needed
+                if 'start_date' in parsed_date_range:
+                    parsed_date_range['start_date'] = datetime.fromisoformat(parsed_date_range['start_date'])
+                if 'end_date' in parsed_date_range:
+                    parsed_date_range['end_date'] = datetime.fromisoformat(parsed_date_range['end_date'])
+            except (json.JSONDecodeError, ValueError) as e:
+                return SchedulingToolResult.error_result(
+                    message="Invalid date range format",
+                    error_details=f"Please provide date_range as JSON: {str(e)}"
+                )
+        
+        events = await tools.get_user_calendar(user_id, parsed_date_range)
         
         # Filter by event type if specified
         if event_type:
@@ -193,7 +233,7 @@ async def read_events(
             data={
                 "events": events,
                 "count": len(events),
-                "date_range": date_range,
+                "date_range": parsed_date_range,
                 "event_type": event_type
             },
             message=f"Retrieved {len(events)} events",
@@ -211,7 +251,7 @@ async def read_events(
 async def update_event(
     user_id: str,
     event_id: str,
-    updated_details: Dict[str, Any]
+    updated_details: str
 ) -> SchedulingToolResult:
     """
     Update an existing calendar event.
@@ -219,13 +259,22 @@ async def update_event(
     Args:
         user_id: User identifier
         event_id: Event identifier to update
-        updated_details: Dictionary of fields to update
+        updated_details: JSON string of fields to update (e.g., '{"title": "New Title", "duration": 90}')
         
     Returns:
         SchedulingToolResult with update status
     """
     try:
         tools = SchedulingTools()
+        
+        # Parse updated_details string to dict
+        try:
+            parsed_details = json.loads(updated_details)
+        except json.JSONDecodeError as e:
+            return SchedulingToolResult.error_result(
+                message="Invalid update details format",
+                error_details=f"Please provide updated_details as JSON: {str(e)}"
+            )
         
         # Get existing event
         event_ref = tools.db.collection("users").document(user_id).collection("schedules").document(event_id)
@@ -240,9 +289,9 @@ async def update_event(
         existing_event = event_doc.to_dict()
         
         # Check for conflicts if datetime or duration is being updated
-        if 'scheduledTime' in updated_details or 'durationMinutes' in updated_details:
-            new_datetime = updated_details.get('scheduledTime', existing_event['scheduledTime'])
-            new_duration = updated_details.get('durationMinutes', existing_event['durationMinutes'])
+        if 'scheduledTime' in parsed_details or 'durationMinutes' in parsed_details:
+            new_datetime = parsed_details.get('scheduledTime', existing_event['scheduledTime'])
+            new_duration = parsed_details.get('durationMinutes', existing_event['durationMinutes'])
             
             # Create temporary event data for conflict checking
             temp_event = {
@@ -265,11 +314,11 @@ async def update_event(
                 )
         
         # Update the event
-        updated_details['updatedAt'] = datetime.now()
-        event_ref.update(updated_details)
+        parsed_details['updatedAt'] = datetime.now()
+        event_ref.update(parsed_details)
         
         # Update Google Calendar if needed
-        if any(field in updated_details for field in ['title', 'description', 'scheduledTime', 'durationMinutes']):
+        if any(field in parsed_details for field in ['title', 'description', 'scheduledTime', 'durationMinutes']):
             google_event_id = existing_event.get('googleEventId')
             if google_event_id:
                 # In a real implementation, you would update the Google Calendar event
@@ -280,8 +329,8 @@ async def update_event(
         return SchedulingToolResult.success_result(
             data={
                 "event_id": event_id,
-                "updated_fields": list(updated_details.keys()),
-                "updated_details": updated_details
+                "updated_fields": list(parsed_details.keys()),
+                "updated_details": parsed_details
             },
             message=f"Successfully updated event",
             next_actions=["view_event", "view_calendar"]
@@ -359,14 +408,14 @@ async def delete_event(
 
 async def create_multiple_events(
     user_id: str,
-    events_list: List[Dict[str, Any]]
+    events_list: str
 ) -> SchedulingToolResult:
     """
     Create multiple events in a single operation.
     
     Args:
         user_id: User identifier
-        events_list: List of event dictionaries
+        events_list: JSON string of event dictionaries list (e.g., '[{"title": "Meeting", "datetime": "2024-01-01T10:00:00", "duration": 60, "event_type": "meeting"}]')
         
     Returns:
         SchedulingToolResult with bulk creation results
@@ -374,11 +423,21 @@ async def create_multiple_events(
     try:
         tools = SchedulingTools()
         
+        # Parse events_list string to list
+        try:
+            import json
+            parsed_events_list = json.loads(events_list)
+        except json.JSONDecodeError as e:
+            return SchedulingToolResult.error_result(
+                message="Invalid events list format",
+                error_details=f"Please provide events_list as JSON: {str(e)}"
+            )
+        
         # Get existing calendar for conflict checking
         existing_calendar = await tools.get_user_calendar(user_id)
         
         # Check for conflicts
-        conflicts = tools.conflict_resolver.check_bulk_conflicts(existing_calendar, events_list)
+        conflicts = tools.conflict_resolver.check_bulk_conflicts(existing_calendar, parsed_events_list)
         
         if conflicts:
             # Return conflict information with suggestions
@@ -397,7 +456,7 @@ async def create_multiple_events(
         created_events = []
         failed_events = []
         
-        for event_data in events_list:
+        for event_data in parsed_events_list:
             try:
                 result = await create_event(
                     user_id=user_id,
@@ -423,7 +482,7 @@ async def create_multiple_events(
                 })
         
         success_count = len(created_events)
-        total_count = len(events_list)
+        total_count = len(parsed_events_list)
         
         return SchedulingToolResult.success_result(
             data={
@@ -447,18 +506,18 @@ async def create_multiple_events(
 
 async def create_recurring_events(
     user_id: str,
-    event_template: Dict[str, Any],
+    event_template: str,
     frequency: str,
-    duration_info: Dict[str, Any]
+    duration_info: str
 ) -> SchedulingToolResult:
     """
     Create recurring events based on a template and pattern.
     
     Args:
         user_id: User identifier
-        event_template: Base event template
+        event_template: JSON string of base event template (e.g., '{"title": "Daily Standup", "duration": 30, "event_type": "meeting"}')
         frequency: Frequency of recurrence (daily, weekly, etc.)
-        duration_info: How long to repeat (count and unit)
+        duration_info: JSON string of how long to repeat (e.g., '{"count": 10, "unit": "days"}')
         
     Returns:
         SchedulingToolResult with recurring events creation results
@@ -466,15 +525,26 @@ async def create_recurring_events(
     try:
         tools = SchedulingTools()
         
+        # Parse JSON parameters
+        try:
+            import json
+            parsed_template = json.loads(event_template)
+            parsed_duration = json.loads(duration_info)
+        except json.JSONDecodeError as e:
+            return SchedulingToolResult.error_result(
+                message="Invalid JSON format in parameters",
+                error_details=f"Please provide valid JSON: {str(e)}"
+            )
+        
         # Create recurring pattern
         pattern = {
             'frequency': frequency,
-            'duration': duration_info
+            'duration': parsed_duration
         }
         
         # Generate event instances
         event_instances = tools.recurring_handler.create_recurring_series(
-            event_template, pattern
+            parsed_template, pattern
         )
         
         if not event_instances:
@@ -548,7 +618,7 @@ async def batch_update_events(
                 event_id = update_data['event_id']
                 updated_details = update_data['updated_details']
                 
-                result = await update_event(user_id, event_id, updated_details)
+                result = await update_event(user_id, event_id, json.dumps(updated_details))
                 
                 if result.success:
                     updated_events.append(result.data)
@@ -650,7 +720,7 @@ async def batch_delete_events(
 
 async def create_events_with_conflict_resolution(
     user_id: str,
-    events_list: List[Dict[str, Any]],
+    events_list: str,
     auto_resolve: bool = True
 ) -> SchedulingToolResult:
     """
@@ -658,7 +728,7 @@ async def create_events_with_conflict_resolution(
     
     Args:
         user_id: User identifier
-        events_list: List of events to create
+        events_list: JSON string of events to create (e.g., '[{"title": "Meeting", "datetime": "2024-01-01T10:00:00", "duration": 60}]')
         auto_resolve: Whether to automatically resolve conflicts
         
     Returns:
@@ -667,23 +737,33 @@ async def create_events_with_conflict_resolution(
     try:
         tools = SchedulingTools()
         
+        # Parse events_list string to list
+        try:
+            import json
+            parsed_events_list = json.loads(events_list)
+        except json.JSONDecodeError as e:
+            return SchedulingToolResult.error_result(
+                message="Invalid events list format",
+                error_details=f"Please provide events_list as JSON: {str(e)}"
+            )
+        
         # Get existing calendar
         existing_calendar = await tools.get_user_calendar(user_id)
         
         if auto_resolve:
             # Try automatic conflict resolution
-            resolution_result = tools.conflict_resolver.auto_resolve_conflicts(events_list)
+            resolution_result = tools.conflict_resolver.auto_resolve_conflicts(parsed_events_list)
             
             if resolution_result['auto_resolution_success']:
                 # All conflicts resolved, create events
                 resolved_events = resolution_result['resolved_events']
-                result = await create_multiple_events(user_id, resolved_events)
+                result = await create_multiple_events(user_id, json.dumps(resolved_events))
                 
                 return SchedulingToolResult.success_result(
                     data={
                         "created_events": result.data,
                         "auto_resolved": True,
-                        "original_events_count": len(events_list),
+                        "original_events_count": len(parsed_events_list),
                         "resolved_events_count": len(resolved_events)
                     },
                     message=f"Successfully created {len(resolved_events)} events with automatic conflict resolution",
@@ -696,7 +776,7 @@ async def create_events_with_conflict_resolution(
                 
                 # Create the resolved events
                 if resolved_events:
-                    await create_multiple_events(user_id, resolved_events)
+                    await create_multiple_events(user_id, json.dumps(resolved_events))
                 
                 # Return information about remaining conflicts
                 conflict_resolutions = tools.conflict_resolver.resolve_conflicts_intelligently(
@@ -714,7 +794,7 @@ async def create_events_with_conflict_resolution(
                 )
         else:
             # Manual conflict resolution
-            conflicts = tools.conflict_resolver.check_bulk_conflicts(existing_calendar, events_list)
+            conflicts = tools.conflict_resolver.check_bulk_conflicts(existing_calendar, parsed_events_list)
             
             if conflicts:
                 conflict_resolutions = tools.conflict_resolver.resolve_conflicts_intelligently(conflicts)
@@ -729,7 +809,7 @@ async def create_events_with_conflict_resolution(
                 )
             else:
                 # No conflicts, create all events
-                return await create_multiple_events(user_id, events_list)
+                return await create_multiple_events(user_id, json.dumps(parsed_events_list))
         
     except Exception as e:
         logger.error(f"Failed to create events with conflict resolution: {e}")
@@ -741,20 +821,30 @@ async def create_events_with_conflict_resolution(
 
 async def suggest_alternative_times_bulk(
     user_id: str,
-    conflicted_events: List[Dict[str, Any]]
+    conflicted_events: str
 ) -> SchedulingToolResult:
     """
     Suggest alternative times for multiple conflicted events.
     
     Args:
         user_id: User identifier
-        conflicted_events: List of events that have conflicts
+        conflicted_events: JSON string of events that have conflicts (e.g., '[{"title": "Meeting", "datetime": "2024-01-01T10:00:00"}]')
         
     Returns:
         SchedulingToolResult with alternative time suggestions
     """
     try:
         tools = SchedulingTools()
+        
+        # Parse conflicted_events string to list
+        try:
+            import json
+            parsed_conflicted_events = json.loads(conflicted_events)
+        except json.JSONDecodeError as e:
+            return SchedulingToolResult.error_result(
+                message="Invalid conflicted events format",
+                error_details=f"Please provide conflicted_events as JSON: {str(e)}"
+            )
         
         # Get existing calendar
         existing_calendar = await tools.get_user_calendar(user_id)
@@ -799,17 +889,17 @@ async def suggest_alternative_times_bulk(
         
         # Suggest alternatives for each conflicted event
         suggestions = tools.conflict_resolver.suggest_batch_alternatives(
-            [{'event': event} for event in conflicted_events],
+            [{'event': event} for event in parsed_conflicted_events],
             available_slots
         )
         
         return SchedulingToolResult.success_result(
             data={
-                "conflicted_events": conflicted_events,
+                "conflicted_events": parsed_conflicted_events,
                 "suggestions": suggestions,
                 "available_slots": available_slots[:10]  # Limit to first 10 slots
             },
-            message=f"Generated alternative time suggestions for {len(conflicted_events)} events",
+            message=f"Generated alternative time suggestions for {len(parsed_conflicted_events)} events",
             next_actions=["choose_alternative", "create_with_alternatives", "find_more_alternatives"]
         )
         
@@ -854,7 +944,7 @@ async def parse_and_create_events(
         
         # Create events with conflict resolution
         result = await create_events_with_conflict_resolution(
-            user_id, parsed_events, auto_resolve=True
+            user_id, json.dumps(parsed_events), auto_resolve=True
         )
         
         # Add parsing information to the result

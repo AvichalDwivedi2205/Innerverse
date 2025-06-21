@@ -13,8 +13,8 @@ from google.genai import types
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
 
-from .prompts import return_instructions_orchestrator
-from .tools import (
+from agents.mental_orchestrator_agent.prompts import return_instructions_orchestrator
+from agents.mental_orchestrator_agent.tools import (
     retrieve_user_embeddings,
     cluster_internal_patterns,
     build_mental_mind_map,

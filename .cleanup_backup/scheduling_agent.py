@@ -6,13 +6,20 @@ resolution, and event management.
 """
 
 import logging
+import sys
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
+# Ensure the workspace root is in Python path for proper imports
+workspace_root = Path(__file__).parent.parent.parent
+if str(workspace_root) not in sys.path:
+    sys.path.insert(0, str(workspace_root))
+
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
-from ..common.tool_results import SchedulingToolResult
-from .tools import (
+from agents.common.tool_results import SchedulingToolResult
+from agents.scheduling_agent.tools import (
     parse_and_create_events,
     create_event,
     read_events,
@@ -23,7 +30,7 @@ from .tools import (
     create_events_with_conflict_resolution,
     suggest_alternative_times_bulk
 )
-from .prompts import (
+from agents.scheduling_agent.prompts import (
     SCHEDULING_AGENT_SYSTEM_PROMPT,
     CONFLICT_RESOLUTION_PROMPT,
     BULK_SCHEDULING_PROMPT,

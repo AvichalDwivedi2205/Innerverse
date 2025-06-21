@@ -8,11 +8,9 @@ This package provides intelligent scheduling capabilities including:
 - Recurring event handling
 """
 
-from .scheduling_agent import SchedulingAgent
 from .tools import *
 
 __all__ = [
-    'SchedulingAgent',
     'create_event',
     'read_events', 
     'update_event',
