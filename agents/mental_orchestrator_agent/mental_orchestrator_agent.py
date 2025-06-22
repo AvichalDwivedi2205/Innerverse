@@ -32,7 +32,8 @@ try:
         detect_crisis_with_empowerment,
         store_orchestrator_results,
         analyze_journal_patterns,
-        generate_mental_health_dashboard
+        generate_mental_health_dashboard,
+        show_visual_dashboard
     )
 except ImportError:
     try:
@@ -48,7 +49,8 @@ except ImportError:
             detect_crisis_with_empowerment,
             store_orchestrator_results,
             analyze_journal_patterns,
-            generate_mental_health_dashboard
+            generate_mental_health_dashboard,
+            show_visual_dashboard
         )
     except ImportError:
         # Final fallback - try direct imports
@@ -64,7 +66,8 @@ except ImportError:
                 detect_crisis_with_empowerment,
                 store_orchestrator_results,
                 analyze_journal_patterns,
-                generate_mental_health_dashboard
+                generate_mental_health_dashboard,
+                show_visual_dashboard
             )
         except ImportError as e:
             print(f"Error importing mental orchestrator components: {e}")
@@ -99,6 +102,9 @@ except ImportError:
             async def generate_mental_health_dashboard(tool_context):
                 return "Mental health dashboard generation not available due to import error"
             
+            async def show_visual_dashboard(tool_context):
+                return "Visual dashboard not available due to import error"
+            
             def return_instructions_orchestrator():
                 return """You are a Mental Orchestrator Agent focused on empowerment and self-creation.
                 Your role is to analyze patterns and provide insights for user empowerment.
@@ -113,6 +119,15 @@ def setup_before_agent_call(callback_context: CallbackContext):
     # Initialize user context if not exists
     if "user_id" not in callback_context.state:
         callback_context.state["user_id"] = os.getenv("DEV_USER_ID", "avichal_dev_user")
+    
+    # Capture user request for visualization context
+    if hasattr(callback_context, '_invocation_context') and hasattr(callback_context._invocation_context, 'user_request'):
+        callback_context.state["user_request"] = callback_context._invocation_context.user_request
+    elif hasattr(callback_context, 'user_request'):
+        callback_context.state["user_request"] = callback_context.user_request
+    else:
+        # Try to get from invocation context or set default
+        callback_context.state["user_request"] = getattr(callback_context, 'prompt', '')
     
     # Initialize orchestrator state
     if "orchestrator_state" not in callback_context.state:
@@ -202,6 +217,7 @@ mental_orchestrator_agent = Agent(
         store_orchestrator_results,
         analyze_journal_patterns,
         generate_mental_health_dashboard,
+        show_visual_dashboard,
     ],
     before_agent_callback=setup_before_agent_call,
     generate_content_config=types.GenerateContentConfig(temperature=0.2),

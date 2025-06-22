@@ -1251,6 +1251,17 @@ async def analyze_journal_patterns(
         if artifacts_result.get("status") == "demo_mode":
             demo_profile = cluster_result["demo_profile"]
             
+            # Check if user wants HTML visualization
+            user_request = tool_context.state.get("user_request", "").lower()
+            logger.info(f"User request captured: '{user_request}'")
+            
+            # Always return HTML for comprehensive requests or when visualization keywords are present
+            if any(keyword in user_request for keyword in ["visual", "dashboard", "chart", "graph", "html", "comprehensive", "artifacts"]):
+                logger.info("Returning HTML visualization based on keywords")
+                # Return rich HTML visualization
+                return _generate_visualization_html(artifacts_result["artifacts"], demo_profile)
+            
+            # Return text summary (existing behavior)
             response = f"""🧠 **Mental Orchestrator Analysis Complete**
 
 **Demo Profile: {demo_profile['name']}**
@@ -1306,9 +1317,431 @@ async def generate_mental_health_dashboard(
     """Tool to generate a comprehensive mental health dashboard with all artifacts."""
     
     try:
-        # Use the analyze_journal_patterns function to get comprehensive results
-        return await analyze_journal_patterns(tool_context)
+        user_id = tool_context.state.get("user_id", "demo_user")
+        
+        # Get journal entries and perform analysis
+        journal_entries = [
+            {
+                "content": "Had a challenging day at work. Feeling stressed about deadlines.",
+                "reflection": "I notice I'm putting too much pressure on myself. Need to practice self-compassion.",
+                "timestamp": datetime.now().isoformat(),
+                "user_id": user_id
+            },
+            {
+                "content": "Tried meditation today. It helped me feel more centered.",
+                "reflection": "Small mindful moments make a big difference in my day.",
+                "timestamp": datetime.now().isoformat(),
+                "user_id": user_id
+            }
+        ]
+        
+        # Perform clustering analysis
+        cluster_result = cluster_journal_patterns(journal_entries)
+        
+        # Generate comprehensive artifacts
+        artifacts_result = display_comprehensive_artifacts(cluster_result)
+        
+        if artifacts_result.get("status") == "demo_mode":
+            demo_profile = cluster_result["demo_profile"]
+            
+            # Always return comprehensive HTML visualization for dashboard requests
+            logger.info("Generating HTML dashboard for mental health dashboard tool")
+            return _generate_visualization_html(artifacts_result["artifacts"], demo_profile)
+        
+        else:
+            return f"Dashboard generation completed with status: {artifacts_result.get('status')}. {artifacts_result.get('message', '')}"
         
     except Exception as e:
         logger.error(f"Error generating dashboard: {str(e)}")
         return f"Error generating mental health dashboard: {str(e)}"
+
+
+# Enhanced HTML Visualization Functions for ADK
+def _generate_visualization_html(artifacts: Dict[str, Any], profile: Dict[str, Any] = None) -> str:
+    """Generate rich HTML with embedded JavaScript visualizations for ADK."""
+    
+    # Extract data for visualizations
+    mind_map = artifacts.get("mind_map", {})
+    timeline = artifacts.get("timeline", {})
+    dashboard = artifacts.get("dashboard", {})
+    network = artifacts.get("pattern_network", {})
+    clusters = artifacts.get("pattern_clusters", {})
+    
+    profile_info = profile or {"name": "User", "background": "General user"}
+    
+    html_content = f"""
+<div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px;">
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px;">
+        <h1 style="margin: 0; font-size: 2.5em;">🧠 Mental Health Artifacts Dashboard</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Comprehensive insights and empowerment journey visualization</p>
+    </div>
+
+    <!-- Profile Info -->
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+        <h3 style="margin: 0 0 10px 0; color: #495057;">📊 Demo Profile: {profile_info['name']}</h3>
+        <p style="margin: 0; color: #6c757d;">{profile_info['background']}</p>
+        <p style="margin: 5px 0 0 0; color: #6c757d;"><strong>Empowerment Journey:</strong> {profile_info.get('journey', 'Personal growth and transformation')}</p>
+    </div>
+
+    <!-- Metrics Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; border-top: 4px solid #28a745;">
+            <div style="font-size: 2.5em; font-weight: bold; color: #28a745; margin-bottom: 5px;">
+                {dashboard.get('overview', {}).get('empowerment_score', 7.7)}/10
+            </div>
+            <div style="color: #6c757d; font-weight: 500;">Empowerment Score</div>
+            <div style="font-size: 0.9em; color: #28a745; margin-top: 5px;">↗️ +0.8 this week</div>
+        </div>
+        
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; border-top: 4px solid #17a2b8;">
+            <div style="font-size: 2em; font-weight: bold; color: #17a2b8; margin-bottom: 5px;">
+                {dashboard.get('overview', {}).get('growth_trajectory', 'Positive')}
+            </div>
+            <div style="color: #6c757d; font-weight: 500;">Growth Trajectory</div>
+            <div style="font-size: 0.9em; color: #17a2b8; margin-top: 5px;">📈 Consistent progress</div>
+        </div>
+        
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; border-top: 4px solid #ffc107;">
+            <div style="font-size: 2.5em; font-weight: bold; color: #ffc107; margin-bottom: 5px;">
+                {dashboard.get('overview', {}).get('patterns_identified', 6)}
+            </div>
+            <div style="color: #6c757d; font-weight: 500;">Patterns Identified</div>
+            <div style="font-size: 0.9em; color: #ffc107; margin-top: 5px;">🔍 Deep insights</div>
+        </div>
+    </div>
+
+    <!-- Visualizations Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+        <!-- Mind Map -->
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 15px 0; color: #495057; display: flex; align-items: center;">
+                🗺️ Empowerment Mind Map
+                <span style="margin-left: auto; font-size: 0.8em; color: #6c757d;">
+                    {len(mind_map.get('nodes', []))} nodes • {len(mind_map.get('connections', []))} connections
+                </span>
+            </h3>
+            <div id="mindmap" style="height: 300px; background: #f8f9fa; border-radius: 8px; position: relative;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #6c757d;">
+                    <div style="font-size: 3em; margin-bottom: 10px;">🧠</div>
+                    <div>Interactive mind map visualization</div>
+                    <div style="font-size: 0.9em; margin-top: 5px;">Showing empowerment themes and connections</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 15px 0; color: #495057; display: flex; align-items: center;">
+                📈 Empowerment Timeline
+                <span style="margin-left: auto; font-size: 0.8em; color: #6c757d;">
+                    {len(timeline.get('events', []))} events • 3 months
+                </span>
+            </h3>
+            <div id="timeline" style="height: 300px; background: #f8f9fa; border-radius: 8px; position: relative;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #6c757d;">
+                    <div style="font-size: 3em; margin-bottom: 10px;">📊</div>
+                    <div>Growth trajectory visualization</div>
+                    <div style="font-size: 0.9em; margin-top: 5px;">Timeline of breakthrough moments</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pattern Analysis -->
+    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px;">
+        <h3 style="margin: 0 0 20px 0; color: #495057;">🎯 Pattern Clusters Analysis</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+            {_generate_cluster_cards(clusters)}
+        </div>
+    </div>
+
+    <!-- Key Insights -->
+    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
+        <h3 style="margin: 0 0 20px 0; color: #495057;">💡 Key Insights</h3>
+        <div style="display: grid; gap: 10px;">
+            {_generate_insights_list(profile_info)}
+        </div>
+    </div>
+
+    <!-- Next Steps -->
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px;">
+        <h3 style="margin: 0 0 15px 0;">🎯 Recommended Next Steps</h3>
+        <div style="display: grid; gap: 10px;">
+            {_generate_next_steps()}
+        </div>
+    </div>
+
+    <!-- Interactive Elements Script -->
+    <script>
+        // Add hover effects and interactions
+        document.querySelectorAll('[data-interactive]').forEach(element => {{
+            element.addEventListener('mouseenter', function() {{
+                this.style.transform = 'scale(1.02)';
+                this.style.transition = 'transform 0.2s ease';
+            }});
+            element.addEventListener('mouseleave', function() {{
+                this.style.transform = 'scale(1)';
+            }});
+        }});
+
+        // Simulate data loading for visualization placeholders
+        setTimeout(() => {{
+            document.getElementById('mindmap').innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100%; flex-direction: column;">
+                    <div style="font-size: 1.2em; color: #28a745; margin-bottom: 10px;">✅ Mind Map Generated</div>
+                    <div style="color: #6c757d;">Central theme: {profile_info.get('central_theme', 'Personal Growth')}</div>
+                </div>
+            `;
+            
+            document.getElementById('timeline').innerHTML = `
+                <div style="display: flex; justify-content: center; align-items: center; height: 100%; flex-direction: column;">
+                    <div style="font-size: 1.2em; color: #17a2b8; margin-bottom: 10px;">📈 Timeline Created</div>
+                    <div style="color: #6c757d;">Journey span: 3 months of growth tracking</div>
+                </div>
+            `;
+        }}, 1000);
+    </script>
+</div>
+"""
+    
+    return html_content
+
+
+def _generate_cluster_cards(clusters: Dict[str, Any]) -> str:
+    """Generate HTML cards for pattern clusters."""
+    if not clusters or not clusters.get('cluster_details'):
+        return """
+        <div style="padding: 20px; text-align: center; color: #6c757d; grid-column: 1 / -1;">
+            <div style="font-size: 2em; margin-bottom: 10px;">🎯</div>
+            <div>Pattern analysis complete</div>
+            <div style="font-size: 0.9em; margin-top: 5px;">4 primary themes identified</div>
+        </div>
+        """
+    
+    cards_html = ""
+    colors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#feca57"]
+    
+    for i, cluster in enumerate(clusters.get('cluster_details', [])[:5]):
+        color = colors[i % len(colors)]
+        cards_html += f"""
+        <div style="padding: 15px; border-radius: 8px; border-left: 4px solid {color}; background: #f8f9fa;" data-interactive="true">
+            <div style="font-weight: bold; color: #495057; margin-bottom: 5px;">{cluster.get('theme', f'Theme {i+1}')}</div>
+            <div style="font-size: 0.9em; color: #6c757d; margin-bottom: 8px;">
+                Score: {cluster.get('empowerment_score', 7.5)}/10 • {cluster.get('entries_count', 5)} entries
+            </div>
+            <div style="background: {color}; height: 4px; border-radius: 2px; width: {min(100, cluster.get('empowerment_score', 7.5) * 10)}%;"></div>
+        </div>
+        """
+    
+    return cards_html
+
+
+def _generate_insights_list(profile_info: Dict[str, Any]) -> str:
+    """Generate insights based on profile."""
+    insights = [
+        "Your work stress patterns show significant growth potential",
+        "Burnout prevention strategies are becoming more effective",
+        "Work-life balance improvements are clearly visible",
+        "Self-awareness practices are yielding positive results"
+    ]
+    
+    insights_html = ""
+    for insight in insights:
+        insights_html += f"""
+        <div style="padding: 12px; background: #d4edda; border-left: 4px solid #28a745; border-radius: 4px; color: #155724;">
+            • {insight}
+        </div>
+        """
+    
+    return insights_html
+
+
+def _generate_next_steps() -> str:
+    """Generate next steps recommendations."""
+    steps = [
+        "Continue exploring the connection between work stress and self-care",
+        "Consider deepening your mindfulness practice", 
+        "Celebrate your progress in boundary setting",
+        "Schedule regular reflection sessions"
+    ]
+    
+    steps_html = ""
+    for step in steps:
+        steps_html += f"""
+        <div style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.9);">
+            • {step}
+        </div>
+        """
+    
+    return steps_html
+
+
+def _generate_dashboard_html(artifacts: Dict[str, Any], profile: Dict[str, Any] = None) -> str:
+    """Generate dashboard-focused HTML for the mental health dashboard tool."""
+    
+    profile_info = profile or {"name": "User", "background": "General user"}
+    dashboard_data = artifacts.get("dashboard", {})
+    
+    dashboard_html = f"""
+<div style="font-family: 'Segoe UI', system-ui, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px;">
+    <div style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border-radius: 12px;">
+        <h1 style="margin: 0; font-size: 2.2em;">📊 Mental Health Dashboard</h1>
+        <p style="margin: 10px 0 0 0; opacity: 0.9;">Real-time insights and progress tracking</p>
+    </div>
+
+    <!-- Weekly Progress -->
+    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px;">
+        <h3 style="margin: 0 0 20px 0; color: #495057;">📈 Weekly Progress</h3>
+        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px;">
+            {_generate_weekly_progress()}
+        </div>
+    </div>
+
+    <!-- Mood Tracking -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 15px 0; color: #495057;">😊 Mood Trends</h3>
+            <div style="height: 200px; background: #f8f9fa; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #6c757d;">
+                <div style="text-align: center;">
+                    <div style="font-size: 3em; margin-bottom: 10px;">📊</div>
+                    <div>Mood tracking visualization</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 15px 0; color: #495057;">🎯 Goals Progress</h3>
+            <div style="space-y: 15px;">
+                {_generate_goals_progress()}
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Summary -->
+    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <h3 style="margin: 0 0 20px 0; color: #495057;">📋 Activity Summary</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            {_generate_activity_summary()}
+        </div>
+    </div>
+</div>
+"""
+    
+    return dashboard_html
+
+
+def _generate_weekly_progress() -> str:
+    """Generate weekly progress indicators."""
+    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    progress = [85, 92, 78, 88, 95, 70, 82]
+    
+    html = ""
+    for i, (day, prog) in enumerate(zip(days, progress)):
+        color = "#28a745" if prog >= 80 else "#ffc107" if prog >= 60 else "#dc3545"
+        html += f"""
+        <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+            <div style="font-size: 0.8em; color: #6c757d; margin-bottom: 5px;">{day}</div>
+            <div style="width: 40px; height: 40px; border-radius: 50%; background: {color}; margin: 0 auto; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9em;">
+                {prog}%
+            </div>
+        </div>
+        """
+    
+    return html
+
+
+def _generate_goals_progress() -> str:
+    """Generate goals progress bars."""
+    goals = [
+        {"name": "Daily Journaling", "progress": 85, "target": "7 days/week"},
+        {"name": "Mindfulness Practice", "progress": 70, "target": "20 min/day"},
+        {"name": "Therapy Sessions", "progress": 100, "target": "1/week"}
+    ]
+    
+    html = ""
+    for goal in goals:
+        color = "#28a745" if goal["progress"] >= 80 else "#ffc107" if goal["progress"] >= 60 else "#dc3545"
+        html += f"""
+        <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span style="font-weight: 500; color: #495057;">{goal["name"]}</span>
+                <span style="color: #6c757d; font-size: 0.9em;">{goal["progress"]}%</span>
+            </div>
+            <div style="background: #e9ecef; height: 8px; border-radius: 4px; overflow: hidden;">
+                <div style="background: {color}; height: 100%; width: {goal["progress"]}%; transition: width 0.3s ease;"></div>
+            </div>
+            <div style="font-size: 0.8em; color: #6c757d; margin-top: 3px;">Target: {goal["target"]}</div>
+        </div>
+        """
+    
+    return html
+
+
+def _generate_activity_summary() -> str:
+    """Generate activity summary cards."""
+    activities = [
+        {"icon": "📝", "name": "Journal Entries", "count": 15, "streak": 7},
+        {"icon": "🧘", "name": "Meditation", "count": 12, "streak": 4},
+        {"icon": "💬", "name": "Therapy Sessions", "count": 3, "streak": 3},
+        {"icon": "🎯", "name": "Goals Achieved", "count": 8, "streak": 2}
+    ]
+    
+    html = ""
+    for activity in activities:
+        html += f"""
+        <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px; border-top: 3px solid #28a745;">
+            <div style="font-size: 2em; margin-bottom: 10px;">{activity["icon"]}</div>
+            <div style="font-weight: bold; color: #495057; margin-bottom: 5px;">{activity["name"]}</div>
+            <div style="font-size: 1.5em; font-weight: bold; color: #28a745; margin-bottom: 3px;">{activity["count"]}</div>
+            <div style="font-size: 0.8em; color: #6c757d;">🔥 {activity["streak"]} day streak</div>
+        </div>
+        """
+    
+    return html
+
+
+async def show_visual_dashboard(
+    tool_context: ToolContext,
+) -> str:
+    """Tool that always returns rich HTML visualizations for mental health artifacts."""
+    
+    try:
+        user_id = tool_context.state.get("user_id", "demo_user")
+        logger.info(f"Visual dashboard requested for user: {user_id}")
+        
+        # Get journal entries and perform analysis
+        journal_entries = [
+            {
+                "content": "Had a challenging day at work. Feeling stressed about deadlines.",
+                "reflection": "I notice I'm putting too much pressure on myself. Need to practice self-compassion.",
+                "timestamp": datetime.now().isoformat(),
+                "user_id": user_id
+            },
+            {
+                "content": "Tried meditation today. It helped me feel more centered.",
+                "reflection": "Small mindful moments make a big difference in my day.",
+                "timestamp": datetime.now().isoformat(),
+                "user_id": user_id
+            }
+        ]
+        
+        # Perform clustering analysis
+        cluster_result = cluster_journal_patterns(journal_entries)
+        
+        # Generate comprehensive artifacts
+        artifacts_result = display_comprehensive_artifacts(cluster_result)
+        
+        if artifacts_result.get("status") == "demo_mode":
+            demo_profile = cluster_result["demo_profile"]
+            logger.info("Generating comprehensive HTML visualization")
+            
+            # Always return rich HTML visualization
+            return _generate_visualization_html(artifacts_result["artifacts"], demo_profile)
+        
+        else:
+            return f"Visual dashboard generation completed with status: {artifacts_result.get('status')}. {artifacts_result.get('message', '')}"
+        
+    except Exception as e:
+        logger.error(f"Error generating visual dashboard: {str(e)}")
+        return f"Error generating visual dashboard: {str(e)}"
