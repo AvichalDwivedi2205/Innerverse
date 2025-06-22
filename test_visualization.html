@@ -62,16 +62,22 @@
         
         <h2>📋 Instructions</h2>
         <ol>
+            <li><strong>Start Preview Server:</strong> Run <code>python preview_server.py</code> in a separate terminal</li>
             <li><strong>Open ADK Interface:</strong> Go to <a href="http://localhost:8002" target="_blank">http://localhost:8002</a></li>
             <li><strong>Select Agent:</strong> Choose "mental_orchestrator_agent"</li>
             <li><strong>Test Commands:</strong> Copy and paste the commands below</li>
-            <li><strong>Observe Results:</strong> Look for rich HTML visualizations</li>
+            <li><strong>Click Preview URLs:</strong> Look for preview URLs like <code>http://localhost:8003/preview/abc123</code></li>
         </ol>
         
         <div class="result-area">
             <h3>🧪 Test Commands to Copy:</h3>
             <div id="test-commands">
-                <p><strong>For Rich Visualizations:</strong></p>
+                <p><strong>🎯 For Preview URLs (NEW!):</strong></p>
+                <code>"Create a dashboard preview for my mental health insights"</code><br>
+                <code>"Generate a shareable link for my mental health dashboard"</code><br>
+                <code>"Create preview URL for my empowerment insights"</code>
+                
+                <p><strong>For Rich HTML Visualizations (Inline):</strong></p>
                 <code>"Show me comprehensive mental health artifacts and visualizations"</code>
                 
                 <p><strong>For Dashboard View:</strong></p>
@@ -95,11 +101,19 @@
         </ul>
         
         <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin-top: 20px;">
-            <h3>🚀 Quick Start</h3>
-            <p>1. Click the ADK link above</p>
-            <p>2. Copy: <strong>"Show me comprehensive mental health artifacts and visualizations"</strong></p>
-            <p>3. Paste into the chat and press Enter</p>
-            <p>4. Watch the magic happen! ✨</p>
+            <h3>🚀 Quick Start (Production Preview System)</h3>
+            <p>1. <strong>Terminal 1:</strong> Run <code>python preview_server.py</code></p>
+            <p>2. <strong>Terminal 2:</strong> Run <code>adk web</code></p>
+            <p>3. <strong>Browser:</strong> Go to <a href="http://localhost:8002" target="_blank">http://localhost:8002</a></p>
+            <p>4. <strong>Agent:</strong> Select "mental_orchestrator_agent"</p>
+            <p>5. <strong>Command:</strong> <code>"Create a dashboard preview for my mental health insights"</code></p>
+            <p>6. <strong>Click URL:</strong> Click the generated preview URL! ✨</p>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px;">
+            <h3>⚡ Alternative (Inline HTML)</h3>
+            <p>Copy: <strong>"Show me comprehensive mental health artifacts and visualizations"</strong></p>
+            <p>This will show HTML directly in the ADK chat interface</p>
         </div>
     </div>
 

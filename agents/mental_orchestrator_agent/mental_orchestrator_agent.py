@@ -33,7 +33,8 @@ try:
         store_orchestrator_results,
         analyze_journal_patterns,
         generate_mental_health_dashboard,
-        show_visual_dashboard
+        show_visual_dashboard,
+        create_dashboard_preview
     )
 except ImportError:
     try:
@@ -50,7 +51,8 @@ except ImportError:
             store_orchestrator_results,
             analyze_journal_patterns,
             generate_mental_health_dashboard,
-            show_visual_dashboard
+            show_visual_dashboard,
+            create_dashboard_preview
         )
     except ImportError:
         # Final fallback - try direct imports
@@ -67,7 +69,8 @@ except ImportError:
                 store_orchestrator_results,
                 analyze_journal_patterns,
                 generate_mental_health_dashboard,
-                show_visual_dashboard
+                show_visual_dashboard,
+                create_dashboard_preview
             )
         except ImportError as e:
             print(f"Error importing mental orchestrator components: {e}")
@@ -104,6 +107,9 @@ except ImportError:
             
             async def show_visual_dashboard(tool_context):
                 return "Visual dashboard not available due to import error"
+            
+            async def create_dashboard_preview(tool_context):
+                return "Dashboard preview not available due to import error"
             
             def return_instructions_orchestrator():
                 return """You are a Mental Orchestrator Agent focused on empowerment and self-creation.
@@ -218,6 +224,7 @@ mental_orchestrator_agent = Agent(
         analyze_journal_patterns,
         generate_mental_health_dashboard,
         show_visual_dashboard,
+        create_dashboard_preview,
     ],
     before_agent_callback=setup_before_agent_call,
     generate_content_config=types.GenerateContentConfig(temperature=0.2),
