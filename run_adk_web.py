@@ -28,7 +28,7 @@ def check_environment():
     google_api_key = os.getenv('GOOGLE_API_KEY')
     if google_api_key:
         print("✅ Google AI API configuration found!")
-        print(f"   Using Google AI API with key: {google_api_key[:10]}...{google_api_key[-4:]}")
+        print(f"   Using Google AI API with key: {google_api_key[:3]}...{google_api_key[-2:]}")
         # Set the environment variable to use Google AI
         os.environ['GOOGLE_GENAI_USE_VERTEXAI'] = 'FALSE'
         return True

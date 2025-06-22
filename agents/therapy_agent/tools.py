@@ -512,22 +512,25 @@ async def _generate_and_store_embedding(
     
     try:
         # Import pinecone service
-        from ..common.pinecone_service import pinecone_service
+        from ..common.pinecone_service import PineconeService
+        
+        # Initialize pinecone service
+        pinecone_service = PineconeService()
         
         # Generate unique embedding ID
-        embedding_id = f"{user_id}_{context}_{source_id}"
+        embedding_id = f"{user_id}_{context}_{source_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         
-        # Store embedding using pinecone service
+        # Store embedding using pinecone service with corrected parameters
         result = await pinecone_service.store_embedding(
             embedding_id=embedding_id,
             text=text,
-            metadata={
-                "user_id": user_id,
-                "context": context,
-                "source_id": source_id,
-                "text": text[:500],  # Store first 500 chars for reference
+            user_id=user_id,
+            context=context,
+            source_id=source_id,
+            additional_metadata={
                 "timestamp": datetime.now().isoformat(),
-                "agent": "therapy_agent"
+                "agent": "therapy_agent",
+                "text_length": len(text)
             }
         )
         

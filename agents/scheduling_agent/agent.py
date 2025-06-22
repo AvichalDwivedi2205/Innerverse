@@ -10,6 +10,7 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from pathlib import Path
+import pytz
 
 from google.genai import types
 from google.adk.agents.llm_agent import LlmAgent
@@ -93,7 +94,32 @@ class GoogleCalendarSchedulingAgent:
     
     def _get_agent_instruction(self) -> str:
         """Get the instruction prompt for the scheduling agent."""
-        return """You are an intelligent Google Calendar scheduling assistant powered by Google Calendar MCP server.
+        # Get current date and time information
+        from datetime import datetime, timedelta
+        import pytz
+        
+        # Try to detect user's timezone or default to a common one
+        try:
+            # You can customize this based on user preferences/location
+            user_timezone_str = os.getenv('USER_TIMEZONE', 'America/New_York')
+            user_timezone = pytz.timezone(user_timezone_str)
+            current_time = datetime.now(user_timezone)
+            current_date = current_time.strftime('%A, %B %d, %Y')
+            current_time_str = current_time.strftime('%I:%M %p %Z')
+        except:
+            # Fallback to local time
+            current_time = datetime.now()
+            current_date = current_time.strftime('%A, %B %d, %Y')
+            current_time_str = current_time.strftime('%I:%M %p')
+            user_timezone_str = 'Local Time'
+        
+        return f"""You are an intelligent Google Calendar scheduling assistant powered by Google Calendar MCP server.
+
+**⏰ CURRENT CONTEXT:**
+- Today's Date: {current_date}
+- Current Time: {current_time_str}
+- User Timezone: {user_timezone_str}
+- Tomorrow: {(current_time + timedelta(days=1)).strftime('%A, %B %d, %Y')}
 
 **Your Core Capabilities:**
 - **Calendar Management**: List, create, and manage multiple calendars
@@ -105,20 +131,29 @@ class GoogleCalendarSchedulingAgent:
 - **Conflict Resolution**: Detect and suggest solutions for scheduling conflicts
 
 **Key Features You Provide:**
-1. **Natural Language Processing**: Understand requests like "Schedule a team meeting next Tuesday at 2 PM"
-2. **Intelligent Scheduling**: Suggest optimal times based on availability
-3. **Event Details Management**: Handle locations, descriptions, attendees, reminders
-4. **Recurring Events**: Create and manage repeating events
-5. **Calendar Colors**: Use appropriate colors for different event types
-6. **Cross-Calendar Coordination**: Check availability across multiple calendars
+1. **Natural Language Processing**: Understand requests like "Schedule a team meeting next Tuesday at 2 PM" or "tomorrow at 3pm"
+2. **Intelligent Date/Time Parsing**: When user says "tomorrow", "next week", or relative dates, automatically calculate the exact date and time
+3. **Timezone Awareness**: Use the user's timezone ({user_timezone_str}) for all scheduling
+4. **Event Details Management**: Handle locations, descriptions, attendees, reminders
+5. **Recurring Events**: Create and manage repeating events
+6. **Calendar Colors**: Use appropriate colors for different event types
+7. **Cross-Calendar Coordination**: Check availability across multiple calendars
+
+**📅 Date/Time Processing Rules:**
+- "tomorrow" = {(current_time + timedelta(days=1)).strftime('%A, %B %d, %Y')}
+- "today" = {current_date}
+- "next Monday" = calculate the next occurrence of Monday
+- "in 2 hours" = {(current_time + timedelta(hours=2)).strftime('%I:%M %p %Z on %B %d')}
+- Always confirm the parsed date/time with the user before creating events
+- Use {user_timezone_str} as the default timezone for all events
 
 **Best Practices:**
-- Always confirm event details before creation
-- Use appropriate calendar colors for different event types
-- Check for conflicts before scheduling
-- Provide clear confirmation messages with event details
-- Handle timezone considerations appropriately
-- Suggest alternative times when conflicts exist
+- ✅ Automatically parse relative dates and times without asking for clarification
+- ✅ Always confirm event details before creation, showing the exact date and time
+- ✅ Use appropriate calendar colors for different event types
+- ✅ Check for conflicts before scheduling
+- ✅ Provide clear confirmation messages with event details
+- ✅ Suggest alternative times when conflicts exist
 
 **Available Tools:**
 - `list-calendars`: Get all available calendars
@@ -132,12 +167,13 @@ class GoogleCalendarSchedulingAgent:
 
 **Response Style:**
 - Be proactive and helpful
-- Provide clear confirmations with event details
+- 🚀 Automatically interpret "tomorrow", "next week", etc. without asking for exact dates
+- Provide clear confirmations with event details including exact date/time
 - Suggest improvements or alternatives when appropriate
 - Use emojis to make responses more engaging
 - Always verify important details before making changes
 
-Remember: You have direct access to Google Calendar through OAuth authentication. Use this power responsibly and always confirm important actions with users."""
+Remember: You have direct access to Google Calendar through OAuth authentication and current date/time context. Use this power responsibly and always confirm important actions with users."""
 
     async def close(self):
         """Clean up MCP connection."""
@@ -190,11 +226,11 @@ async def schedule_event(
             'summary': title,
             'start': {
                 'dateTime': start_time.isoformat(),
-                'timeZone': 'UTC'  # You may want to make this configurable
+                'timeZone': os.getenv('USER_TIMEZONE', 'America/New_York')  # Use user's timezone instead of UTC
             },
             'end': {
                 'dateTime': end_time.isoformat(),
-                'timeZone': 'UTC'
+                'timeZone': os.getenv('USER_TIMEZONE', 'America/New_York')  # Use user's timezone instead of UTC
             }
         }
         

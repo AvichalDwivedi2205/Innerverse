@@ -6,7 +6,13 @@ awareness, tracks growth toward self-responsibility, and detects crises while
 maintaining focus on personal power and self-creation.
 """
 import os
+import sys
 from datetime import date
+
+# Ensure the workspace root is in Python path
+workspace_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if workspace_root not in sys.path:
+    sys.path.insert(0, workspace_root)
 
 from google.genai import types
 
@@ -24,21 +30,79 @@ try:
         recommend_awareness_exercises,
         calculate_dashboard_metrics,
         detect_crisis_with_empowerment,
-        store_orchestrator_results
+        store_orchestrator_results,
+        analyze_journal_patterns,
+        generate_mental_health_dashboard
     )
 except ImportError:
-    # Fall back to absolute imports (when loaded directly by ADK)
-    from agents.mental_orchestrator_agent.prompts import return_instructions_orchestrator
-    from agents.mental_orchestrator_agent.tools import (
-        retrieve_user_embeddings,
-        cluster_internal_patterns,
-        build_mental_mind_map,
-        generate_empowerment_insights,
-        recommend_awareness_exercises,
-        calculate_dashboard_metrics,
-        detect_crisis_with_empowerment,
-        store_orchestrator_results
-    )
+    try:
+        # Fall back to absolute imports (when loaded directly by ADK)
+        from agents.mental_orchestrator_agent.prompts import return_instructions_orchestrator
+        from agents.mental_orchestrator_agent.tools import (
+            retrieve_user_embeddings,
+            cluster_internal_patterns,
+            build_mental_mind_map,
+            generate_empowerment_insights,
+            recommend_awareness_exercises,
+            calculate_dashboard_metrics,
+            detect_crisis_with_empowerment,
+            store_orchestrator_results,
+            analyze_journal_patterns,
+            generate_mental_health_dashboard
+        )
+    except ImportError:
+        # Final fallback - try direct imports
+        try:
+            from prompts import return_instructions_orchestrator
+            from tools import (
+                retrieve_user_embeddings,
+                cluster_internal_patterns,
+                build_mental_mind_map,
+                generate_empowerment_insights,
+                recommend_awareness_exercises,
+                calculate_dashboard_metrics,
+                detect_crisis_with_empowerment,
+                store_orchestrator_results,
+                analyze_journal_patterns,
+                generate_mental_health_dashboard
+            )
+        except ImportError as e:
+            print(f"Error importing mental orchestrator components: {e}")
+            # Create minimal fallback functions
+            def retrieve_user_embeddings(tool_context):
+                return "Embeddings retrieval not available due to import error"
+            
+            def cluster_internal_patterns(tool_context):
+                return "Pattern clustering not available due to import error"
+            
+            def build_mental_mind_map(tool_context):
+                return "Mind map generation not available due to import error"
+            
+            def generate_empowerment_insights(tool_context):
+                return "Insight generation not available due to import error"
+            
+            def recommend_awareness_exercises(tool_context):
+                return "Exercise recommendations not available due to import error"
+            
+            def calculate_dashboard_metrics(tool_context):
+                return "Dashboard metrics not available due to import error"
+            
+            def detect_crisis_with_empowerment(tool_context):
+                return "Crisis detection not available due to import error"
+            
+            def store_orchestrator_results(tool_context):
+                return "Results storage not available due to import error"
+            
+            async def analyze_journal_patterns(tool_context):
+                return "Journal pattern analysis not available due to import error"
+            
+            async def generate_mental_health_dashboard(tool_context):
+                return "Mental health dashboard generation not available due to import error"
+            
+            def return_instructions_orchestrator():
+                return """You are a Mental Orchestrator Agent focused on empowerment and self-creation.
+                Your role is to analyze patterns and provide insights for user empowerment.
+                Focus on internal awareness and personal growth."""
 
 date_today = date.today()
 
@@ -136,6 +200,8 @@ mental_orchestrator_agent = Agent(
         calculate_dashboard_metrics,
         detect_crisis_with_empowerment,
         store_orchestrator_results,
+        analyze_journal_patterns,
+        generate_mental_health_dashboard,
     ],
     before_agent_callback=setup_before_agent_call,
     generate_content_config=types.GenerateContentConfig(temperature=0.2),
