@@ -301,14 +301,14 @@ async def store_therapy_session(
         
         # Prepare therapy session document
         session_doc = {
-            "sessionDate": datetime.now(),
+            "sessionDate": datetime.now().isoformat(),
             "transcript": therapy_session["transcript"],
             "summary": therapy_session["summary"],
             "insights": therapy_session["insights"],
             "embeddingId": "",  # Will be set after embedding generation
             "duration": 60,  # Default 60 minutes
-            "createdAt": datetime.now(),
-            "updatedAt": datetime.now()
+            "createdAt": datetime.now().isoformat(),
+            "updatedAt": datetime.now().isoformat()
         }
         
         # Store in Firestore
@@ -373,8 +373,8 @@ async def store_therapy_session(
                     context="notes",
                     source_id=note_id
                 ),
-                "createdAt": datetime.now(),
-                "updatedAt": datetime.now()
+                "createdAt": datetime.now().isoformat(),
+                "updatedAt": datetime.now().isoformat()
             }
             
             db.collection("users").document(user_id).collection("therapyNotes").document(note_id).set(note_doc)
@@ -399,7 +399,7 @@ async def store_therapy_session(
                         "sourceId": session_id,
                         "priority": _get_therapy_category_priority(category_key),
                         "status": "pending",
-                        "createdAt": datetime.now(),
+                        "createdAt": datetime.now().isoformat(),
                         "scheduledFor": question.delivery["scheduledFor"],
                         "expiresAt": question.delivery["expiresAt"]
                     }
@@ -415,8 +415,8 @@ async def store_therapy_session(
                 "source": "therapy",
                 "priority": 4,
                 "status": "pending",
-                "createdAt": datetime.now(),
-                "expiresAt": datetime.now().replace(hour=23, minute=59, second=59)
+                "createdAt": datetime.now().isoformat(),
+                "expiresAt": datetime.now().replace(hour=23, minute=59, second=59).isoformat()
             }
         
         db.collection("users").document(user_id).collection("recommendations").add(recommendation_doc)
@@ -459,7 +459,7 @@ async def update_therapy_consistency_tracking(
         # Update therapy consistency
         metrics["consistency"]["therapyCount"] += 1
         metrics["consistency"]["therapyStreak"] += 1  # Simplified streak logic
-        metrics["lastUpdated"] = datetime.now()
+        metrics["lastUpdated"] = datetime.now().isoformat()
         
         # Store updated metrics
         metrics_ref.set(metrics, merge=True)
@@ -489,7 +489,7 @@ async def trigger_mental_orchestrator_therapy(
             "sourceId": session_id,
             "action": "update_mind_map",
             "status": "pending",
-            "createdAt": datetime.now()
+            "createdAt": datetime.now().isoformat()
         }
         
         # Store trigger (this would be picked up by Firebase Functions)

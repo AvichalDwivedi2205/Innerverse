@@ -801,8 +801,8 @@ class EnhancedSessionTimer:
                     }
                     for phase in self.session_data.phases
                 ],
-                "createdAt": datetime.now(),
-                "updatedAt": datetime.now()
+                "createdAt": datetime.now().isoformat(),
+                "updatedAt": datetime.now().isoformat()
             }
             
             # Store in Firestore

@@ -556,8 +556,8 @@ async def store_orchestrator_results(
         for insight in orchestrator_state["insights"]:
             insight_doc = {
                 **insight,
-                "createdAt": datetime.now(),
-                "updatedAt": datetime.now()
+                "createdAt": datetime.now().isoformat(),
+                "updatedAt": datetime.now().isoformat()
             }
             db.collection("users").document(user_id).collection("insights").add(insight_doc)
         
@@ -565,8 +565,8 @@ async def store_orchestrator_results(
         for recommendation in orchestrator_state["exercise_recommendations"]:
             rec_doc = {
                 **recommendation,
-                "createdAt": datetime.now(),
-                "expiresAt": datetime.now() + timedelta(days=7)
+                "createdAt": datetime.now().isoformat(),
+                "expiresAt": (datetime.now() + timedelta(days=7)).isoformat()
             }
             db.collection("users").document(user_id).collection("recommendations").add(rec_doc)
         
@@ -578,7 +578,7 @@ async def store_orchestrator_results(
         for alert in orchestrator_state["crisis_alerts"]:
             alert_doc = {
                 **alert,
-                "createdAt": datetime.now(),
+                "createdAt": datetime.now().isoformat(),
                 "resolvedAt": None
             }
             db.collection("users").document(user_id).collection("crisisAlerts").add(alert_doc)

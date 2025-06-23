@@ -52,7 +52,10 @@ class ProductionServices:
             'GOOGLE_CLOUD_PROJECT': os.environ.get('GOOGLE_CLOUD_PROJECT'),
             'GOOGLE_GENAI_USE_VERTEXAI': 'True',
             'ENVIRONMENT': 'production',
-            'USER_TIMEZONE': os.environ.get('USER_TIMEZONE', 'America/New_York')
+            'USER_TIMEZONE': os.environ.get('USER_TIMEZONE', 'America/New_York'),
+            # Add OAuth test mode for unverified apps
+            'OAUTH_TEST_MODE': 'true',
+            'GOOGLE_OAUTH_REDIRECT_URI': os.environ.get('GOOGLE_OAUTH_REDIRECT_URI', 'http://localhost:8080/auth/callback')
         }
         
         for key, value in required_env.items():
@@ -61,6 +64,14 @@ class ProductionServices:
                 logger.info(f"✅ Environment: {key} = {value}")
             else:
                 logger.warning(f"⚠️  Missing environment variable: {key}")
+        
+        # Special handling for OAuth credentials in production
+        oauth_creds = os.environ.get('GOOGLE_OAUTH_CREDENTIALS', '/app/google-oauth-credentials.json')
+        if os.path.exists(oauth_creds):
+            logger.info(f"✅ OAuth credentials found: {oauth_creds}")
+        else:
+            logger.warning(f"⚠️  OAuth credentials not found: {oauth_creds}")
+            logger.warning("   This will disable Calendar integration features")
     
     def start_adk_web(self):
         """Start ADK web interface as main process"""

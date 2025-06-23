@@ -68,13 +68,13 @@ async def start_exercise_session(
             "sessionId": session_id,
             "type": exercise_type,
             "userId": user_id,
-            "startTime": datetime.now(),
+            "startTime": datetime.now().isoformat(),
             "duration": 10,  # Fixed 10 minutes
             "status": "active",
             "effectivenessScore": None,
             "notes": "",
-            "createdAt": datetime.now(),
-            "updatedAt": datetime.now()
+            "createdAt": datetime.now().isoformat(),
+            "updatedAt": datetime.now().isoformat()
         }
         
         db.collection("users").document(user_id).collection("exercises").document(exercise_id).set(exercise_doc)
@@ -132,11 +132,11 @@ async def complete_exercise_session(
         exercise_ref = db.collection("users").document(user_id).collection("exercises").document(exercise_id)
         
         update_data = {
-            "completedAt": datetime.now(),
+            "completedAt": datetime.now().isoformat(),
             "effectivenessScore": effectiveness_score,
             "notes": notes or "",
             "status": "completed",
-            "updatedAt": datetime.now()
+            "updatedAt": datetime.now().isoformat()
         }
         
         exercise_ref.update(update_data)
@@ -358,12 +358,12 @@ async def analyze_food_image(
         # Update daily calories
         daily_data = {
             "totalCalories": new_total,
-            "lastUpdated": datetime.now(),
+            "lastUpdated": datetime.now().isoformat(),
             "meals": firestore.ArrayUnion([{
                 "mealType": meal_type,
                 "calories": analysis_result["estimated_calories"],
                 "foods": analysis_result["detected_foods"],
-                "timestamp": datetime.now(),
+                "timestamp": datetime.now().isoformat(),
                 "confidence": analysis_result["confidence"]
             }])
         }
@@ -415,7 +415,7 @@ async def reset_daily_calories(user_id: str) -> NutritionToolResult:
         
         reset_data = {
             "totalCalories": 0,
-            "lastReset": datetime.now(),
+            "lastReset": datetime.now().isoformat(),
             "meals": []
         }
         

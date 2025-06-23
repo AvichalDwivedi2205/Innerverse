@@ -128,7 +128,8 @@ class GoogleCalendarSchedulingAgent:
             "1. Download OAuth credentials from Google Cloud Console\n"
             "2. Save as 'google-oauth-credentials.json' in the project root\n"
             "3. Or set GOOGLE_OAUTH_CREDENTIALS environment variable\n"
-            "4. Ensure the credential type is 'Desktop Application'"
+            "4. Ensure the credential type is 'Desktop Application'\n"
+            "5. Add your test users to the OAuth consent screen"
         )
     
     def _get_agent_instruction(self) -> str:

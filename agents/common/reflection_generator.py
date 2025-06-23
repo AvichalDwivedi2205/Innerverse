@@ -472,11 +472,11 @@ class EnhancedReflectionGenerator:
                     question=q_text,
                     context={"sourceType": source_type, "fallback": True},
                     delivery={
-                        "createdAt": datetime.now(),
-                        "scheduledFor": datetime.now() + timedelta(hours=1),
+                        "createdAt": datetime.now().isoformat(),
+                        "scheduledFor": (datetime.now() + timedelta(hours=1)).isoformat(),
                         "deliveredAt": None,
                         "completedAt": None,
-                        "expiresAt": datetime.now() + timedelta(days=7)
+                        "expiresAt": (datetime.now() + timedelta(days=7)).isoformat()
                     },
                     metadata={
                         "difficulty": "easy",
