@@ -6,3 +6,8 @@ pycache/
 __pycache__/
 google-oauth-credentials.json
 production.env
+# Dockerfile - temporarily excluded for security fix
+token.json
+*.key
+*.pem
+*.p12

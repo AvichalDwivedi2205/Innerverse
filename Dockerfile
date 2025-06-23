@@ -1,5 +1,5 @@
 # Multi-service Dockerfile for Innerverse Production Deployment
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Install Node.js for MCP server
 RUN apt-get update && apt-get install -y \
@@ -28,7 +28,7 @@ RUN chmod 755 /tmp/oauth_creds
 ENV PYTHONPATH=/app
 ENV ENVIRONMENT=production
 ENV GOOGLE_GENAI_USE_VERTEXAI=False
-ENV GOOGLE_API_KEY=AIzaSyBT9CwVU0nOFMOfTGiuRFBhIrbwnCnfuvw
+# GOOGLE_API_KEY will be set via Cloud Run environment variables - NEVER hardcode here! 
 
 # Expose port (Cloud Run will set PORT env var)
 EXPOSE $PORT

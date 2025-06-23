@@ -3,7 +3,7 @@
 Production startup script for Innerverse Multi-Agent System
 
 This script uses the ADK CLI to start the multi-agent web interface
-in production mode.
+in production mode. Preview URLs are handled via direct content serving.
 """
 
 import os

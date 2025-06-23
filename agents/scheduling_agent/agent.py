@@ -7,6 +7,7 @@ providing OAuth-authenticated access to Google Calendar API.
 
 import os
 import asyncio
+import subprocess
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from pathlib import Path
@@ -36,35 +37,62 @@ class GoogleCalendarSchedulingAgent:
         if self.agent and self.mcp_toolset:
             return self.agent, self.mcp_toolset
             
-        # Create MCP toolset for Google Calendar
-        self.mcp_toolset = MCPToolset(
-            connection_params=StdioServerParameters(
-                command='npx',
-                args=['-y', '@cocal/google-calendar-mcp'],
-                env={
-                    'GOOGLE_OAUTH_CREDENTIALS': self._get_oauth_credentials_path()
-                }
-            ),
-            # Use all available Google Calendar tools
-            tool_filter=[
-                'list-calendars',
-                'list-events', 
-                'search-events',
-                'create-event',
-                'update-event',
-                'delete-event',
-                'get-freebusy',
-                'list-colors'
-            ]
-        )
+        # Create MCP toolset for Google Calendar - simplified for production stability
+        print("🔧 Initializing Google Calendar MCP connection...")
         
-        # Create the LLM agent with calendar tools
-        self.agent = LlmAgent(
-            model=self.model_name,
-            name='google_calendar_scheduling_agent',
-            instruction=self._get_agent_instruction(),
-            tools=[self.mcp_toolset],
-        )
+        # In production, skip MCP for now due to timeout issues
+        if os.getenv('ENVIRONMENT') == 'production':
+            print("⚠️  Production mode: Using scheduling agent in FALLBACK mode")
+            print("   This provides manual scheduling assistance without direct calendar access")
+            self.mcp_toolset = None
+        else:
+            # Development mode - try MCP connection
+            try:
+                oauth_path = self._get_oauth_credentials_path()
+                print(f"🔐 Using OAuth credentials from: {oauth_path}")
+                
+                self.mcp_toolset = MCPToolset(
+                    connection_params=StdioServerParameters(
+                        command='npx',
+                        args=['-y', '@cocal/google-calendar-mcp'],
+                        env={
+                            'GOOGLE_OAUTH_CREDENTIALS': oauth_path,
+                            'NODE_ENV': 'development'
+                        }
+                    ),
+                    # Use essential Google Calendar tools only
+                    tool_filter=[
+                        'list-calendars',
+                        'list-events', 
+                        'create-event'
+                    ]
+                )
+                print("✅ MCP Toolset created successfully")
+                
+            except Exception as e:
+                print(f"❌ Failed to create MCP Toolset: {str(e)}")
+                print("📝 Using fallback mode...")
+                self.mcp_toolset = None
+        
+        # Create the LLM agent with calendar tools or fallback mode
+        if self.mcp_toolset:
+            # Normal mode with MCP tools
+            self.agent = LlmAgent(
+                model=self.model_name,
+                name='google_calendar_scheduling_agent',
+                instruction=self._get_agent_instruction(),
+                tools=[self.mcp_toolset],
+            )
+            print("✅ Scheduling agent created with Google Calendar MCP tools")
+        else:
+            # Fallback mode without MCP tools but with helpful instructions
+            self.agent = LlmAgent(
+                model=self.model_name,
+                name='google_calendar_scheduling_agent_fallback',
+                instruction=self._get_fallback_instruction(),
+                tools=[],  # No tools in fallback mode
+            )
+            print("⚠️  Scheduling agent created in FALLBACK mode (no Google Calendar access)")
         
         return self.agent, self.mcp_toolset
     
@@ -185,6 +213,86 @@ class GoogleCalendarSchedulingAgent:
 - Always verify important details before making changes
 
 Remember: You have direct access to Google Calendar through OAuth authentication and current date/time context. Use this power responsibly and always confirm important actions with users."""
+
+    def _get_fallback_instruction(self) -> str:
+        """Get fallback instruction when MCP tools are not available."""
+        from datetime import datetime, timedelta
+        import pytz
+        
+        try:
+            user_timezone_str = os.getenv('USER_TIMEZONE', 'America/New_York')
+            user_timezone = pytz.timezone(user_timezone_str)
+            current_time = datetime.now(user_timezone)
+            current_date = current_time.strftime('%A, %B %d, %Y')
+            current_time_str = current_time.strftime('%I:%M %p %Z')
+        except:
+            current_time = datetime.now()
+            current_date = current_time.strftime('%A, %B %d, %Y')
+            current_time_str = current_time.strftime('%I:%M %p')
+            user_timezone_str = 'Local Time'
+        
+        return f"""You are a helpful scheduling assistant currently in FALLBACK mode.
+
+**⚠️  CURRENT STATUS: GOOGLE CALENDAR ACCESS UNAVAILABLE**
+
+**⏰ CURRENT CONTEXT:**
+- Today's Date: {current_date}
+- Current Time: {current_time_str}
+- User Timezone: {user_timezone_str}
+
+**🔧 Technical Issue:**
+The Google Calendar MCP server is currently unavailable. This could be due to:
+- OAuth authentication needs to be set up
+- Network connectivity issues
+- Google Calendar API quotas
+- Configuration problems
+
+**What I Can Still Help With:**
+✅ **Schedule Planning**: Help you plan and organize events
+✅ **Time Management**: Suggest optimal meeting times
+✅ **Event Details**: Help format event descriptions, locations, attendees
+✅ **Conflict Analysis**: Review your described schedule for conflicts
+✅ **Meeting Coordination**: Draft meeting invitations and agendas
+✅ **Calendar Strategy**: Provide time management and scheduling advice
+
+**What I Cannot Do Right Now:**
+❌ Actually create/modify Google Calendar events
+❌ Check your real calendar availability  
+❌ Access existing calendar data
+❌ Send calendar invitations
+
+**🚀 How I'll Help You:**
+1. **Manual Instructions**: I'll provide step-by-step instructions for creating events
+2. **Event Templates**: Generate properly formatted event details you can copy-paste
+3. **Schedule Analysis**: Help analyze scheduling conflicts based on what you tell me
+4. **Reminders**: Suggest when to set reminders and follow-ups
+
+**Example Response Format:**
+When you ask me to schedule something, I'll respond like:
+
+"📅 **Manual Calendar Event Details:**
+- Title: Team Meeting
+- Date: Tuesday, June 25, 2024  
+- Time: 2:00 PM - 3:00 PM EST
+- Location: Conference Room A / Zoom
+- Description: Weekly team sync...
+
+**To create this event:**
+1. Open Google Calendar in your browser
+2. Click 'Create' or the '+' button
+3. Copy the details above
+4. Set appropriate reminders (15 mins before recommended)
+
+Would you like me to help with any scheduling coordination or provide more detailed event planning?"
+
+**💡 For Full Google Calendar Integration:**
+Contact your system administrator to:
+1. Verify OAuth credentials are properly configured
+2. Check Google Calendar API access
+3. Restart the MCP server components
+4. Review network connectivity to Google services
+
+I'm here to help with scheduling coordination even without direct calendar access!"""
 
     async def close(self):
         """Clean up MCP connection."""
