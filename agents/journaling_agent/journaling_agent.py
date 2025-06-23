@@ -44,7 +44,9 @@ def setup_before_agent_call(callback_context: CallbackContext):
     
     # Initialize user context if not exists
     if "user_id" not in callback_context.state:
-        callback_context.state["user_id"] = os.getenv("DEV_USER_ID", "avichal_dev_user")
+        # Set user context in state - use dynamic user ID from session or fallback
+        session_user_id = callback_context.session_id.split('_')[0] if '_' in callback_context.session_id else callback_context.session_id
+        callback_context.state["user_id"] = os.getenv("DEV_USER_ID", session_user_id or "default_user")
     
     # Initialize journaling session state with preservation of existing data
     if "journal_session" not in callback_context.state:

@@ -5,3 +5,4 @@ pycache/
 .pytest_cache/
 __pycache__/
 google-oauth-credentials.json
+production.env

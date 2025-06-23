@@ -70,7 +70,18 @@ class GoogleCalendarSchedulingAgent:
     
     def _get_oauth_credentials_path(self) -> str:
         """Get the path to OAuth credentials file."""
-        # Try different possible locations for OAuth credentials
+        
+        # For production: Use environment-based path or user-specific storage
+        if os.getenv('ENVIRONMENT') == 'production':
+            # Production: Use shared credentials with user-specific tokens
+            google_creds = os.getenv('GOOGLE_OAUTH_CREDENTIALS', './google-oauth-credentials.json')
+            if os.path.exists(google_creds):
+                return os.path.abspath(google_creds)
+            else:
+                # Fallback to default production path
+                return '/app/google-oauth-credentials.json'
+        
+        # Development: Try different possible locations for OAuth credentials
         possible_paths = [
             os.getenv('GOOGLE_OAUTH_CREDENTIALS'),
             './google-oauth-credentials.json',
