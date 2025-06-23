@@ -4,7 +4,7 @@ This module provides structured response classes for all agent tools to ensure
 consistent, programmatic responses that can be properly processed by agents.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Union
 from datetime import datetime
 
@@ -17,7 +17,7 @@ class ToolResult(BaseModel):
     message: str
     next_suggested_actions: List[str] = []
     error_details: Optional[str] = None
-    timestamp: datetime = datetime.now()
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
     
     class Config:
         json_encoders = {
@@ -193,7 +193,7 @@ class SchedulingToolResult(ToolResult):
     """Specific result class for scheduling agent tools (wellness + general life scheduling)."""
     
     google_event_id: Optional[str] = None
-    scheduled_time: Optional[datetime] = None
+    scheduled_time: Optional[str] = None
     schedule_category: Optional[str] = None  # wellness, personal, work, health
     frequency: Optional[str] = None  # daily, weekly, biweekly, monthly, once
     
@@ -204,7 +204,7 @@ class SchedulingToolResult(ToolResult):
         message: str,
         next_actions: List[str] = None,
         google_event_id: str = None,
-        scheduled_time: datetime = None,
+        scheduled_time: str = None,
         schedule_category: str = None,
         frequency: str = None
     ):
@@ -338,7 +338,7 @@ class CoordinationResult(BaseModel):
     results: Dict[str, Any]
     message: str
     errors: List[str] = []
-    timestamp: datetime = datetime.now()
+    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
     
     class Config:
         json_encoders = {

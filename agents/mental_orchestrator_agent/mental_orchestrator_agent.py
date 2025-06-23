@@ -7,6 +7,7 @@ maintaining focus on personal power and self-creation.
 """
 import os
 import sys
+import uuid
 from datetime import date
 
 # Ensure the workspace root is in Python path
@@ -125,8 +126,11 @@ def setup_before_agent_call(callback_context: CallbackContext):
     # Initialize user context if not exists
     if "user_id" not in callback_context.state:
         # Set user context in state - use dynamic user ID from session or fallback
-        session_user_id = callback_context.session_id.split('_')[0] if '_' in callback_context.session_id else callback_context.session_id
+        # Get session_id from callback_context.state or generate one
+        session_id = getattr(callback_context, 'session_id', None) or callback_context.state.get('session_id', str(uuid.uuid4()))
+        session_user_id = session_id.split('_')[0] if '_' in session_id else session_id
         callback_context.state["user_id"] = os.getenv("DEV_USER_ID", session_user_id or "default_user")
+        callback_context.state["session_id"] = session_id
     
     # Capture user request for visualization context
     if hasattr(callback_context, '_invocation_context') and hasattr(callback_context._invocation_context, 'user_request'):

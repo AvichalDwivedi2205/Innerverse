@@ -27,13 +27,14 @@ RUN chmod 755 /tmp/oauth_creds
 # Set environment variables for production
 ENV PYTHONPATH=/app
 ENV ENVIRONMENT=production
-ENV GOOGLE_GENAI_USE_VERTEXAI=True
+ENV GOOGLE_GENAI_USE_VERTEXAI=False
+ENV GOOGLE_API_KEY=AIzaSyBT9CwVU0nOFMOfTGiuRFBhIrbwnCnfuvw
 
 # Expose port (Cloud Run will set PORT env var)
 EXPOSE $PORT
 
-# Create production startup script
-COPY production_start.py .
+# Copy main application file
+COPY app.py .
 
-# Start all services
-CMD ["python", "production_start.py"] 
+# Start the FastAPI application
+CMD ["python", "app.py"] 

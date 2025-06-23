@@ -5,6 +5,7 @@ generates therapy notes for continuity, and provides Reflection Questions that
 reinforce the user's role as creator of their experience.
 """
 import os
+import uuid
 from datetime import date
 
 from google.genai import types
@@ -46,7 +47,10 @@ def setup_before_agent_call(callback_context: CallbackContext):
     # Initialize user context if not exists
     if "user_id" not in callback_context.state:
         # Set user context in state - use dynamic user ID from session or fallback
-        session_user_id = callback_context.session_id.split('_')[0] if '_' in callback_context.session_id else callback_context.session_id
+        # Get session_id from callback_context.state or generate one
+        session_id = getattr(callback_context, 'session_id', None) or callback_context.state.get('session_id', str(uuid.uuid4()))
+        session_user_id = session_id.split('_')[0] if '_' in session_id else session_id
+        callback_context.state["session_id"] = session_id
         callback_context.state["user_id"] = os.getenv("DEV_USER_ID", session_user_id or "default_user")
     
     # Initialize therapy session state
